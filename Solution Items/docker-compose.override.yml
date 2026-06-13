@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  sqlserverdb:
-    container_name: sqlserverdb
+  orderdb:
+    container_name: orderdb
     environment:
       SA_PASSWORD: "Passw0rd!"
       ACCEPT_EULA: "Y"
