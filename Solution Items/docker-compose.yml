@@ -1,7 +1,8 @@
-version: '3.8'
-
 services:
   # database section
+  identitydb:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+
   orderdb:
     image: mcr.microsoft.com/mssql/server:2019-latest
 
@@ -57,3 +58,5 @@ volumes:
     name: mongo_data
   pgadmin_data:
     name: pgadmin_data
+  identity_sqlserver_data:
+    name: identity_sqlserver_data

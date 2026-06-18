@@ -1,0 +1,15 @@
+server:
+  port: 5006
+
+spring:
+  application:
+    name: inventory-service
+  data:
+    mongodb:
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/inventorydb}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

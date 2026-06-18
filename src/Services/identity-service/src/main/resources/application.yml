@@ -1,0 +1,23 @@
+server:
+  port: 5001
+
+spring:
+  application:
+    name: identity-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1435;databaseName=master;encrypt=false;trustServerCertificate=true}
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ${SPRING_DATASOURCE_PASSWORD:Passw0rd!}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

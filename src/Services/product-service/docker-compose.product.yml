@@ -1,0 +1,43 @@
+services:
+  productdb:
+    image: mysql:8.0.29
+    container_name: productdb
+    environment:
+      MYSQL_ROOT_PASSWORD: "Passw0rd!"
+      MYSQL_DATABASE: productdb
+    restart: unless-stopped
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pPassw0rd!"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  product-service:
+    image: java-microservices/product-service:latest
+    container_name: product-service
+    build:
+      context: ..
+      dockerfile: src/product-service/Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://productdb:3306/productdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+    depends_on:
+      productdb:
+        condition: service_healthy
+    ports:
+      - "5002:5002"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: java_microservices
+    driver: bridge
+
+volumes:
+  mysql_data:
+    name: mysql_data
