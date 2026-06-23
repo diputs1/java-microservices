@@ -19,14 +19,14 @@
     <modules>
         <module>src/common</module>
         <module>src/gateway-service</module>
-        <module>src/identity-service</module>
-        <module>src/product-service</module>
-        <module>src/customer-service</module>
-        <module>src/basket-service</module>
-        <module>src/ordering-service</module>
-        <module>src/inventory-service</module>
+        <module>src/Services/identity-service</module>
+        <module>src/Services/product-service</module>
+        <module>src/Services/customer-service</module>
+        <module>src/Services/basket-service</module>
+        <module>src/Services/ordering-service</module>
+        <module>src/Services/inventory-service</module>
         <module>src/background-job-service</module>
-        <module>src/email-service</module>
+        <module>src/Services/email-service</module>
     </modules>
 
     <properties>

@@ -8,7 +8,7 @@
         <groupId>com.tungdt.microservices</groupId>
         <artifactId>java-microservices</artifactId>
         <version>0.0.1-SNAPSHOT</version>
-        <relativePath>../../pom.xml</relativePath>
+        <relativePath>../../../pom.xml</relativePath>
     </parent>
 
     <artifactId>product-service</artifactId>

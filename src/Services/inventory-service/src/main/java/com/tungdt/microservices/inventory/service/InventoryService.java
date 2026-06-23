@@ -2,9 +2,13 @@ package com.tungdt.microservices.inventory.service;
 
 import com.tungdt.microservices.common.error.BusinessException;
 import com.tungdt.microservices.inventory.dto.InventoryRequest;
+import com.tungdt.microservices.inventory.dto.InventoryReservationItemRequest;
+import com.tungdt.microservices.inventory.dto.InventoryReservationRequest;
+import com.tungdt.microservices.inventory.dto.InventoryReservationResponse;
 import com.tungdt.microservices.inventory.dto.InventoryResponse;
 import com.tungdt.microservices.inventory.entity.InventoryEntity;
 import com.tungdt.microservices.inventory.repository.InventoryRepository;
+import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +51,49 @@ public class InventoryService {
         return toResponse(inventoryRepository.save(item));
     }
 
+    public InventoryReservationResponse reserve(InventoryReservationRequest request) {
+        List<InventoryReservationItemRequest> reservedItems = new ArrayList<>();
+        try {
+            for (InventoryReservationItemRequest item : request.items()) {
+                InventoryEntity inventory = findBySku(item.sku());
+                if (inventory.getAvailableQuantity() < item.quantity()) {
+                    throw new BusinessException("Inventory quantity is not enough for sku " + item.sku(), HttpStatus.CONFLICT);
+                }
+                inventory.setAvailableQuantity(inventory.getAvailableQuantity() - item.quantity());
+                inventoryRepository.save(inventory);
+                reservedItems.add(item);
+            }
+            log.info("Reserved inventory items={}", reservedItems.size());
+            return new InventoryReservationResponse("RESERVED", reservedItems);
+        } catch (RuntimeException ex) {
+            releaseReservedItems(reservedItems);
+            throw ex;
+        }
+    }
+
+    public InventoryReservationResponse release(InventoryReservationRequest request) {
+        releaseReservedItems(request.items());
+        log.info("Released inventory items={}", request.items().size());
+        return new InventoryReservationResponse("RELEASED", request.items());
+    }
+
     private void apply(InventoryRequest request, InventoryEntity item) {
         item.setSku(request.sku());
         item.setAvailableQuantity(request.availableQuantity());
         item.setLocation(request.location());
+    }
+
+    private InventoryEntity findBySku(String sku) {
+        return inventoryRepository.findBySku(sku)
+                .orElseThrow(() -> new BusinessException("Inventory not found for sku " + sku, HttpStatus.NOT_FOUND));
+    }
+
+    private void releaseReservedItems(List<InventoryReservationItemRequest> items) {
+        for (InventoryReservationItemRequest item : items) {
+            InventoryEntity inventory = findBySku(item.sku());
+            inventory.setAvailableQuantity(inventory.getAvailableQuantity() + item.quantity());
+            inventoryRepository.save(inventory);
+        }
     }
 
     private InventoryResponse toResponse(InventoryEntity item) {

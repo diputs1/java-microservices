@@ -2,6 +2,8 @@ package com.tungdt.microservices.inventory.controller;
 
 import com.tungdt.microservices.common.api.ApiResponse;
 import com.tungdt.microservices.inventory.dto.InventoryRequest;
+import com.tungdt.microservices.inventory.dto.InventoryReservationRequest;
+import com.tungdt.microservices.inventory.dto.InventoryReservationResponse;
 import com.tungdt.microservices.inventory.dto.InventoryResponse;
 import com.tungdt.microservices.inventory.service.InventoryService;
 import jakarta.validation.Valid;
@@ -41,5 +43,15 @@ public class InventoryController {
     @PutMapping("/{id}")
     public ApiResponse<InventoryResponse> update(@PathVariable String id, @Valid @RequestBody InventoryRequest request) {
         return ApiResponse.ok(inventoryService.update(id, request));
+    }
+
+    @PostMapping("/reservations")
+    public ApiResponse<InventoryReservationResponse> reserve(@Valid @RequestBody InventoryReservationRequest request) {
+        return ApiResponse.ok(inventoryService.reserve(request));
+    }
+
+    @PostMapping("/reservations/release")
+    public ApiResponse<InventoryReservationResponse> release(@Valid @RequestBody InventoryReservationRequest request) {
+        return ApiResponse.ok(inventoryService.release(request));
     }
 }

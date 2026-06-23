@@ -5,38 +5,27 @@ import com.tungdt.microservices.ordering.dto.OrderRequest;
 import com.tungdt.microservices.ordering.dto.OrderResponse;
 import com.tungdt.microservices.ordering.entity.OrderEntity;
 import com.tungdt.microservices.ordering.repository.OrderRepository;
-import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.tungdt.microservices.ordering.saga.OrderSagaService;
 
 @Service
 public class OrderingService {
     private static final Logger log = LoggerFactory.getLogger(OrderingService.class);
-    private static final String ORDER_CREATED_QUEUE = "order.created";
     private final OrderRepository orderRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final OrderSagaService orderSagaService;
 
-    public OrderingService(OrderRepository orderRepository, RabbitTemplate rabbitTemplate) {
+    public OrderingService(OrderRepository orderRepository, OrderSagaService orderSagaService) {
         this.orderRepository = orderRepository;
-        this.rabbitTemplate = rabbitTemplate;
+        this.orderSagaService = orderSagaService;
     }
 
-    @Transactional
     public OrderResponse create(OrderRequest request) {
         log.info("Create order customerId={}", request.customerId());
-        OrderEntity order = new OrderEntity();
-        order.setCustomerId(request.customerId());
-        order.setTotalAmount(request.totalAmount());
-        order.setStatus("CREATED");
-        order.setCreatedAt(Instant.now());
-        OrderEntity saved = orderRepository.save(order);
-        rabbitTemplate.convertAndSend(ORDER_CREATED_QUEUE, "order:" + saved.getId());
-        return toResponse(saved);
+        return orderSagaService.createOrder(request);
     }
 
     public List<OrderResponse> getAll() {
