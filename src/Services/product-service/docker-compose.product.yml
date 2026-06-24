@@ -20,8 +20,8 @@ services:
     image: java-microservices/product-service:latest
     container_name: product-service
     build:
-      context: ..
-      dockerfile: src/product-service/Dockerfile
+      context: ../../..
+      dockerfile: src/Services/product-service/Dockerfile
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://productdb:3306/productdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
       SPRING_DATASOURCE_USERNAME: root

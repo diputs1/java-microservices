@@ -5,7 +5,7 @@ spring:
   application:
     name: identity-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1435;databaseName=master;encrypt=false;trustServerCertificate=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1434;databaseName=master;encrypt=false;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
     password: ${SPRING_DATASOURCE_PASSWORD:Passw0rd!}
   jpa:

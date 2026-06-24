@@ -113,7 +113,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: gateway-service
+        MODULE_PATH: src/gateway-service
     environment:
       IDENTITY_SERVICE_URL: http://identity-service:5001
       PRODUCT_SERVICE_URL: http://product-service:5002
@@ -141,7 +141,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: identity-service
+        MODULE_PATH: src/Services/identity-service
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://identitydb:1433;databaseName=master;encrypt=false;trustServerCertificate=true"
       SPRING_DATASOURCE_USERNAME: sa
@@ -157,7 +157,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: product-service
+        MODULE_PATH: src/Services/product-service
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://productdb:3306/productdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
       SPRING_DATASOURCE_USERNAME: root
@@ -173,7 +173,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: customer-service
+        MODULE_PATH: src/Services/customer-service
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://customerdb:5432/customerdb
       SPRING_DATASOURCE_USERNAME: postgres
@@ -189,7 +189,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: basket-service
+        MODULE_PATH: src/Services/basket-service
     environment:
       SPRING_DATA_REDIS_HOST: basketdb
       SPRING_DATA_REDIS_PORT: 6379
@@ -204,7 +204,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: ordering-service
+        MODULE_PATH: src/Services/ordering-service
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://orderdb:1433;databaseName=master;encrypt=false;trustServerCertificate=true"
       SPRING_DATASOURCE_USERNAME: sa
@@ -222,7 +222,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: inventory-service
+        MODULE_PATH: src/Services/inventory-service
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://inventorydb:27017/inventorydb
     depends_on:
@@ -236,7 +236,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: background-job-service
+        MODULE_PATH: src/background-job-service
     environment:
       SPRING_DATA_MONGODB_URI: mongodb://inventorydb:27017/jobdb
       SPRING_RABBITMQ_HOST: rabbitmq
@@ -252,7 +252,7 @@ services:
       context: ..
       dockerfile: Dockerfile
       args:
-        MODULE: email-service
+        MODULE_PATH: src/Services/email-service
     environment:
       SPRING_RABBITMQ_HOST: rabbitmq
     depends_on:

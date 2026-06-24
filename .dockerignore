@@ -1,0 +1,10 @@
+.git
+.gitignore
+.idea
+.agent
+**/*.iml
+**/target
+**/*.log
+hs_err_pid*
+Solution Items
+Scratches and Consoles
