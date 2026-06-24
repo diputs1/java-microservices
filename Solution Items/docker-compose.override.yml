@@ -204,9 +204,13 @@ services:
       SPRING_DATASOURCE_USERNAME: sa
       SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
       SPRING_RABBITMQ_HOST: rabbitmq
+      BASKET_SERVICE_URL: http://basket-service:5004
+      INVENTORY_SERVICE_URL: http://inventory-service:5006
     depends_on:
       - orderdb
       - rabbitmq
+      - basket-service
+      - inventory-service
     ports:
       - "5005:5005"
 
