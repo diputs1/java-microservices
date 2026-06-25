@@ -4,6 +4,7 @@ import com.tungdt.microservices.common.error.BusinessException;
 import com.tungdt.microservices.customer.dto.CustomerRequest;
 import com.tungdt.microservices.customer.dto.CustomerResponse;
 import com.tungdt.microservices.customer.entity.CustomerEntity;
+import com.tungdt.microservices.customer.mapper.CustomerMapper;
 import com.tungdt.microservices.customer.repository.CustomerRepository;
 import java.util.List;
 import org.slf4j.Logger;
@@ -16,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerService {
     private static final Logger log = LoggerFactory.getLogger(CustomerService.class);
     private final CustomerRepository customerRepository;
+    private final CustomerMapper customerMapper;
 
-    public CustomerService(CustomerRepository customerRepository) {
+    public CustomerService(CustomerRepository customerRepository, CustomerMapper customerMapper) {
         this.customerRepository = customerRepository;
+        this.customerMapper = customerMapper;
     }
 
     @Transactional
@@ -28,24 +31,24 @@ public class CustomerService {
         }
         log.info("Create customer email={}", request.email());
         CustomerEntity customer = new CustomerEntity();
-        apply(request, customer);
-        return toResponse(customerRepository.save(customer));
+        customerMapper.updateEntity(request, customer);
+        return customerMapper.toResponse(customerRepository.save(customer));
     }
 
     public List<CustomerResponse> getAll() {
-        return customerRepository.findAll().stream().map(this::toResponse).toList();
+        return customerRepository.findAll().stream().map(customerMapper::toResponse).toList();
     }
 
     public CustomerResponse getById(Long id) {
-        return toResponse(findById(id));
+        return customerMapper.toResponse(findById(id));
     }
 
     @Transactional
     public CustomerResponse update(Long id, CustomerRequest request) {
         CustomerEntity customer = findById(id);
         log.info("Update customer id={}", id);
-        apply(request, customer);
-        return toResponse(customerRepository.save(customer));
+        customerMapper.updateEntity(request, customer);
+        return customerMapper.toResponse(customerRepository.save(customer));
     }
 
     @Transactional
@@ -60,13 +63,4 @@ public class CustomerService {
                 .orElseThrow(() -> new BusinessException("Customer not found", HttpStatus.NOT_FOUND));
     }
 
-    private void apply(CustomerRequest request, CustomerEntity customer) {
-        customer.setEmail(request.email());
-        customer.setFullName(request.fullName());
-        customer.setPhone(request.phone());
-    }
-
-    private CustomerResponse toResponse(CustomerEntity customer) {
-        return new CustomerResponse(customer.getId(), customer.getEmail(), customer.getFullName(), customer.getPhone());
-    }
 }

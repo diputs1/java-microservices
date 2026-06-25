@@ -1,0 +1,9 @@
+CREATE TABLE accounts (
+    id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    username VARCHAR(80) NOT NULL UNIQUE,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(120) NOT NULL,
+    role VARCHAR(40) NOT NULL,
+    created_at DATETIME2 NOT NULL,
+    updated_at DATETIME2 NOT NULL
+);

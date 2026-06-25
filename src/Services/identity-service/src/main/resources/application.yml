@@ -7,10 +7,13 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1434;databaseName=master;encrypt=false;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:Passw0rd!}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:

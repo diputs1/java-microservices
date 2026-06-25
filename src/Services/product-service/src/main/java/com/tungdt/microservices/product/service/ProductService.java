@@ -4,6 +4,7 @@ import com.tungdt.microservices.common.error.BusinessException;
 import com.tungdt.microservices.product.dto.ProductRequest;
 import com.tungdt.microservices.product.dto.ProductResponse;
 import com.tungdt.microservices.product.entity.ProductEntity;
+import com.tungdt.microservices.product.mapper.ProductMapper;
 import com.tungdt.microservices.product.repository.ProductRepository;
 import java.util.List;
 import org.slf4j.Logger;
@@ -16,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private static final Logger log = LoggerFactory.getLogger(ProductService.class);
     private final ProductRepository productRepository;
+    private final ProductMapper productMapper;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, ProductMapper productMapper) {
         this.productRepository = productRepository;
+        this.productMapper = productMapper;
     }
 
     @Transactional
@@ -28,24 +31,24 @@ public class ProductService {
         }
         log.info("Create product sku={}", request.sku());
         ProductEntity product = new ProductEntity();
-        apply(request, product);
-        return toResponse(productRepository.save(product));
+        productMapper.updateEntity(request, product);
+        return productMapper.toResponse(productRepository.save(product));
     }
 
     public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream().map(this::toResponse).toList();
+        return productRepository.findAll().stream().map(productMapper::toResponse).toList();
     }
 
     public ProductResponse getById(Long id) {
-        return toResponse(findById(id));
+        return productMapper.toResponse(findById(id));
     }
 
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
         ProductEntity product = findById(id);
         log.info("Update product id={}", id);
-        apply(request, product);
-        return toResponse(productRepository.save(product));
+        productMapper.updateEntity(request, product);
+        return productMapper.toResponse(productRepository.save(product));
     }
 
     @Transactional
@@ -60,22 +63,4 @@ public class ProductService {
                 .orElseThrow(() -> new BusinessException("Product not found", HttpStatus.NOT_FOUND));
     }
 
-    private void apply(ProductRequest request, ProductEntity product) {
-        product.setSku(request.sku());
-        product.setName(request.name());
-        product.setDescription(request.description());
-        product.setPrice(request.price());
-        product.setQuantity(request.quantity());
-    }
-
-    private ProductResponse toResponse(ProductEntity product) {
-        return new ProductResponse(
-                product.getId(),
-                product.getSku(),
-                product.getName(),
-                product.getDescription(),
-                product.getPrice(),
-                product.getQuantity()
-        );
-    }
 }

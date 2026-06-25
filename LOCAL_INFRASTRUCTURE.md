@@ -6,20 +6,22 @@ Kibana, and a Fluent Bit collector without building the Java services.
 ## Start
 
 ```bash
-docker compose -f docker-compose.infrastructure.yml up -d
+cp .env.example .env
+$EDITOR .env
+docker compose --env-file .env -f docker-compose.infrastructure.yml up -d
 ```
 
 Add pgAdmin when a browser UI for PostgreSQL is useful:
 
 ```bash
-docker compose -f docker-compose.infrastructure.yml --profile tools up -d
+docker compose --env-file .env -f docker-compose.infrastructure.yml --profile tools up -d
 ```
 
 Check container readiness and logs:
 
 ```bash
-docker compose -f docker-compose.infrastructure.yml ps
-docker compose -f docker-compose.infrastructure.yml logs -f
+docker compose --env-file .env -f docker-compose.infrastructure.yml ps
+docker compose --env-file .env -f docker-compose.infrastructure.yml logs -f
 ```
 
 ## Local endpoints
@@ -29,11 +31,11 @@ docker compose -f docker-compose.infrastructure.yml logs -f
 | Elasticsearch | http://localhost:9200 | Security disabled for local use |
 | Kibana | http://localhost:5601 | Create data view `microservices-*` |
 | RabbitMQ UI | http://localhost:15672 | `guest` / `guest` |
-| pgAdmin (tools profile) | http://localhost:5050 | `admin@local.dev` / `Passw0rd!` |
-| Identity SQL Server | `localhost:1434` | `sa` / `Passw0rd!`, database `master` |
-| Ordering SQL Server | `localhost:1435` | `sa` / `Passw0rd!`, database `master` |
-| Product MySQL | `localhost:3306` | `root` / `Passw0rd!`, database `productdb` |
-| Customer PostgreSQL | `localhost:5432` | `postgres` / `Passw0rd!`, database `customerdb` |
+| pgAdmin (tools profile) | http://localhost:5050 | `${PGADMIN_DEFAULT_EMAIL}` / `${PGADMIN_DEFAULT_PASSWORD}` |
+| Identity SQL Server | `localhost:1434` | `sa` / `${LOCAL_DB_PASSWORD}`, database `master` |
+| Ordering SQL Server | `localhost:1435` | `sa` / `${LOCAL_DB_PASSWORD}`, database `master` |
+| Product MySQL | `localhost:3306` | `root` / `${LOCAL_DB_PASSWORD}`, database `productdb` |
+| Customer PostgreSQL | `localhost:5432` | `postgres` / `${LOCAL_DB_PASSWORD}`, database `customerdb` |
 | Basket Redis | `localhost:6379` | No password |
 | Inventory MongoDB | `localhost:27017` | No password; databases `inventorydb` and `jobdb` |
 
@@ -56,11 +58,11 @@ Compose files under `Solution Items` when its application logs should also appea
 ## Stop
 
 ```bash
-docker compose -f docker-compose.infrastructure.yml down
+docker compose --env-file .env -f docker-compose.infrastructure.yml down
 ```
 
 To also delete all local database and log data:
 
 ```bash
-docker compose -f docker-compose.infrastructure.yml down -v
+docker compose --env-file .env -f docker-compose.infrastructure.yml down -v
 ```
