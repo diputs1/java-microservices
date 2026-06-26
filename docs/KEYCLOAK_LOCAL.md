@@ -30,6 +30,9 @@ The realm import creates:
 - realm roles: `CUSTOMER`, `ADMIN`, `SERVICE_ORDERING`
 - internal scope: `internal`
 
+Create local users from the Keycloak admin console, then assign `CUSTOMER` or
+`ADMIN` realm roles as needed. The repository does not import user passwords.
+
 ## Login transition
 
 `POST /api/v1/identity/login` remains available for compatibility during Phase 3,
