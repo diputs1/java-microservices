@@ -8,6 +8,7 @@ import com.tungdt.microservices.identity.dto.RegisterRequest;
 import com.tungdt.microservices.identity.service.IdentityService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,11 +30,13 @@ public class IdentityController {
     }
 
     @PostMapping("/login")
+    @Deprecated(since = "v1", forRemoval = false)
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok(identityService.login(request));
     }
 
     @GetMapping("/accounts")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<AccountResponse>> getAll() {
         return ApiResponse.ok(identityService.getAll());
     }

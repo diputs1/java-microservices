@@ -6,6 +6,7 @@ import com.tungdt.microservices.customer.dto.CustomerResponse;
 import com.tungdt.microservices.customer.service.CustomerService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,26 +26,31 @@ public class CustomerController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<CustomerResponse> create(@Valid @RequestBody CustomerRequest request) {
         return ApiResponse.created(customerService.create(request));
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<CustomerResponse>> getAll() {
         return ApiResponse.ok(customerService.getAll());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<CustomerResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(customerService.getById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<CustomerResponse> update(@PathVariable Long id, @Valid @RequestBody CustomerRequest request) {
         return ApiResponse.ok(customerService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         customerService.delete(id);
         return ApiResponse.ok(null);

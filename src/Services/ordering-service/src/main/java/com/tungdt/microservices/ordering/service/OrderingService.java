@@ -1,6 +1,7 @@
 package com.tungdt.microservices.ordering.service;
 
 import com.tungdt.microservices.common.error.BusinessException;
+import com.tungdt.microservices.common.security.ResourceAccessGuard;
 import com.tungdt.microservices.ordering.dto.OrderRequest;
 import com.tungdt.microservices.ordering.dto.OrderResponse;
 import com.tungdt.microservices.ordering.entity.OrderEntity;
@@ -17,13 +18,18 @@ public class OrderingService {
     private static final Logger log = LoggerFactory.getLogger(OrderingService.class);
     private final OrderRepository orderRepository;
     private final OrderSagaService orderSagaService;
+    private final ResourceAccessGuard resourceAccessGuard;
 
-    public OrderingService(OrderRepository orderRepository, OrderSagaService orderSagaService) {
+    public OrderingService(OrderRepository orderRepository,
+            OrderSagaService orderSagaService,
+            ResourceAccessGuard resourceAccessGuard) {
         this.orderRepository = orderRepository;
         this.orderSagaService = orderSagaService;
+        this.resourceAccessGuard = resourceAccessGuard;
     }
 
     public OrderResponse create(OrderRequest request) {
+        assertCanAccessCustomer(request.customerId());
         log.info("Create order customerId={}", request.customerId());
         return orderSagaService.createOrder(request);
     }
@@ -33,12 +39,20 @@ public class OrderingService {
     }
 
     public OrderResponse getById(Long id) {
-        return toResponse(findById(id));
+        OrderEntity order = findById(id);
+        assertCanAccessCustomer(order.getCustomerId());
+        return toResponse(order);
     }
 
     private OrderEntity findById(Long id) {
         return orderRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("Order not found", HttpStatus.NOT_FOUND));
+    }
+
+    private void assertCanAccessCustomer(Long customerId) {
+        if (!resourceAccessGuard.canAccessOwner(String.valueOf(customerId))) {
+            throw new BusinessException("Access denied for order resource", HttpStatus.FORBIDDEN);
+        }
     }
 
     private OrderResponse toResponse(OrderEntity order) {

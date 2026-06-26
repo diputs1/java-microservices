@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -33,6 +34,7 @@ public class GatewaySecurityConfig {
         return http.authorizeExchange(exchange -> exchange
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
                         .pathMatchers("/api/v1/identity/register", "/api/v1/identity/login").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(
                         reactiveJwtAuthenticationConverter(properties))))

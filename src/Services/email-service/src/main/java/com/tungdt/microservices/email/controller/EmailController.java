@@ -5,6 +5,7 @@ import com.tungdt.microservices.email.dto.EmailRequest;
 import com.tungdt.microservices.email.dto.EmailResponse;
 import com.tungdt.microservices.email.service.EmailService;
 import jakarta.validation.Valid;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +21,7 @@ public class EmailController {
     }
 
     @PostMapping("/send")
+    @PreAuthorize("hasRole('ADMIN') or hasAuthority('SCOPE_internal') or hasAuthority('SCOPE_service')")
     public ApiResponse<EmailResponse> send(@Valid @RequestBody EmailRequest request) {
         return ApiResponse.ok(emailService.send(request));
     }
