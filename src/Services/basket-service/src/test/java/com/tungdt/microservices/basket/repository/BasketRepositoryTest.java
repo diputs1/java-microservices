@@ -6,10 +6,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tungdt.microservices.basket.config.BasketProperties;
 import com.tungdt.microservices.basket.dto.BasketItemResponse;
 import com.tungdt.microservices.basket.dto.BasketResponse;
 import com.tungdt.microservices.common.error.BusinessException;
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +34,9 @@ class BasketRepositoryTest {
 
     @BeforeEach
     void setUp() {
-        basketRepository = new BasketRepository(redisTemplate, new ObjectMapper());
+        BasketProperties basketProperties = new BasketProperties();
+        basketProperties.setTtl(Duration.ofMinutes(30));
+        basketRepository = new BasketRepository(redisTemplate, new ObjectMapper(), basketProperties);
     }
 
     @Test
@@ -42,7 +46,7 @@ class BasketRepositoryTest {
 
         BasketResponse response = basketRepository.save(basket);
 
-        verify(valueOperations).set("basket:customer-1", new ObjectMapper().writeValueAsString(basket));
+        verify(valueOperations).set("basket:customer-1", new ObjectMapper().writeValueAsString(basket), Duration.ofMinutes(30));
         assertThat(response).isSameAs(basket);
     }
 

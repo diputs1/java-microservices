@@ -9,6 +9,9 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
 
+basket:
+  ttl: ${BASKET_TTL:PT30M}
+
 app:
   security:
     enabled: ${APP_SECURITY_ENABLED:false}
