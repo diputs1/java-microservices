@@ -1,6 +1,7 @@
 package com.tungdt.microservices.product.controller;
 
 import com.tungdt.microservices.common.api.ApiResponse;
+import com.tungdt.microservices.product.dto.ProductCatalogResponse;
 import com.tungdt.microservices.product.dto.ProductRequest;
 import com.tungdt.microservices.product.dto.ProductResponse;
 import com.tungdt.microservices.product.service.ProductService;
@@ -34,6 +35,11 @@ public class ProductController {
     @GetMapping
     public ApiResponse<List<ProductResponse>> getAll() {
         return ApiResponse.ok(productService.getAll());
+    }
+
+    @GetMapping("/sku/{sku}")
+    public ApiResponse<ProductCatalogResponse> getCatalogBySku(@PathVariable String sku) {
+        return ApiResponse.ok(productService.getCatalogBySku(sku));
     }
 
     @GetMapping("/{id}")

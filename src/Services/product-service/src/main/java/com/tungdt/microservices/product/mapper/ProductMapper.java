@@ -2,6 +2,7 @@ package com.tungdt.microservices.product.mapper;
 
 import com.tungdt.microservices.product.dto.ProductRequest;
 import com.tungdt.microservices.product.dto.ProductResponse;
+import com.tungdt.microservices.product.dto.ProductCatalogResponse;
 import com.tungdt.microservices.product.entity.ProductEntity;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,17 @@ public class ProductMapper {
                 product.getDescription(),
                 product.getPrice(),
                 product.getQuantity()
+        );
+    }
+
+    public ProductCatalogResponse toCatalogResponse(ProductEntity product) {
+        return new ProductCatalogResponse(
+                product.getId(),
+                product.getSku(),
+                product.getName(),
+                product.getDescription(),
+                product.getPrice(),
+                product.getUpdatedAt()
         );
     }
 }

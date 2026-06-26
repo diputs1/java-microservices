@@ -1,6 +1,7 @@
 package com.tungdt.microservices.product.service;
 
 import com.tungdt.microservices.common.error.BusinessException;
+import com.tungdt.microservices.product.dto.ProductCatalogResponse;
 import com.tungdt.microservices.product.dto.ProductRequest;
 import com.tungdt.microservices.product.dto.ProductResponse;
 import com.tungdt.microservices.product.entity.ProductEntity;
@@ -43,6 +44,10 @@ public class ProductService {
         return productMapper.toResponse(findById(id));
     }
 
+    public ProductCatalogResponse getCatalogBySku(String sku) {
+        return productMapper.toCatalogResponse(findBySku(sku));
+    }
+
     @Transactional
     public ProductResponse update(Long id, ProductRequest request) {
         ProductEntity product = findById(id);
@@ -63,4 +68,8 @@ public class ProductService {
                 .orElseThrow(() -> new BusinessException("Product not found", HttpStatus.NOT_FOUND));
     }
 
+    private ProductEntity findBySku(String sku) {
+        return productRepository.findBySku(sku)
+                .orElseThrow(() -> new BusinessException("Product not found for sku " + sku, HttpStatus.NOT_FOUND));
+    }
 }
