@@ -19,6 +19,14 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
 
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}
+    audiences:
+      - ${APP_SECURITY_AUDIENCE:microservices-api}
+    client-id: ${APP_SECURITY_CLIENT_ID:product-service}
+
 management:
   endpoints:
     web:

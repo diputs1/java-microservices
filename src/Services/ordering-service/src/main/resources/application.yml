@@ -30,6 +30,14 @@ services:
   inventory:
     url: ${INVENTORY_SERVICE_URL:http://localhost:5006}
 
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}
+    audiences:
+      - ${APP_SECURITY_AUDIENCE:microservices-api}
+    client-id: ${APP_SECURITY_CLIENT_ID:ordering-service}
+
 management:
   endpoints:
     web:
