@@ -75,6 +75,10 @@ public class OrderEntity {
         this.status = status;
     }
 
+    public void setStatus(OrderStatus status) {
+        this.status = status.name();
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
