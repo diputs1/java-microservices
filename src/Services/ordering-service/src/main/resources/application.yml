@@ -37,6 +37,11 @@ app:
     audiences:
       - ${APP_SECURITY_AUDIENCE:microservices-api}
     client-id: ${APP_SECURITY_CLIENT_ID:ordering-service}
+    service-account:
+      token-uri: ${APP_SECURITY_SERVICE_ACCOUNT_TOKEN_URI:}
+      client-id: ${APP_SECURITY_SERVICE_ACCOUNT_CLIENT_ID:ordering-service}
+      client-secret: ${APP_SECURITY_SERVICE_ACCOUNT_CLIENT_SECRET:}
+      scope: ${APP_SECURITY_SERVICE_ACCOUNT_SCOPE:internal}
 
 management:
   endpoints:
