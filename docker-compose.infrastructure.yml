@@ -6,11 +6,17 @@ services:
     container_name: identitydb
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "Passw0rd!"
+      MSSQL_SA_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     ports:
       - "1434:1433"
     volumes:
       - identity_sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
   orderdb:
@@ -18,25 +24,31 @@ services:
     container_name: orderdb
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "Passw0rd!"
+      MSSQL_SA_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     ports:
       - "1435:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
 
   productdb:
     image: mysql:8.0.29
     container_name: productdb
     environment:
-      MYSQL_ROOT_PASSWORD: "Passw0rd!"
+      MYSQL_ROOT_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       MYSQL_DATABASE: productdb
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pPassw0rd!"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$${MYSQL_ROOT_PASSWORD}\""]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -48,7 +60,7 @@ services:
     container_name: customerdb
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "Passw0rd!"
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       POSTGRES_DB: customerdb
     ports:
       - "5432:5432"
@@ -170,8 +182,8 @@ services:
     container_name: pgadmin
     profiles: ["tools"]
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local.dev
-      PGADMIN_DEFAULT_PASSWORD: "Passw0rd!"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
     ports:
       - "5050:80"
     volumes:

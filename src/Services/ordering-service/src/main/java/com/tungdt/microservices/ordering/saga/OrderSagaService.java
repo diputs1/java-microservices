@@ -8,6 +8,7 @@ import com.tungdt.microservices.ordering.client.InventoryReservationItemRequest;
 import com.tungdt.microservices.ordering.dto.OrderRequest;
 import com.tungdt.microservices.ordering.dto.OrderResponse;
 import com.tungdt.microservices.ordering.entity.OrderEntity;
+import com.tungdt.microservices.ordering.entity.OrderStatus;
 import com.tungdt.microservices.ordering.repository.OrderRepository;
 import java.time.Instant;
 import java.util.List;
@@ -23,8 +24,6 @@ import org.springframework.stereotype.Service;
 public class OrderSagaService {
     private static final Logger log = LoggerFactory.getLogger(OrderSagaService.class);
     private static final String ORDER_CREATED_QUEUE = "order.created";
-    private static final String STATUS_COMPLETED = "COMPLETED";
-    private static final String STATUS_FAILED = "FAILED";
 
     private final OrderRepository orderRepository;
     private final BasketClient basketClient;
@@ -94,7 +93,7 @@ public class OrderSagaService {
         OrderEntity order = new OrderEntity();
         order.setCustomerId(request.customerId());
         order.setTotalAmount(basket.totalAmount());
-        order.setStatus(STATUS_COMPLETED);
+        order.setStatus(OrderStatus.COMPLETED);
         order.setCreatedAt(Instant.now());
         return orderRepository.save(order);
     }
@@ -109,7 +108,7 @@ public class OrderSagaService {
     }
 
     private void markFailed(OrderEntity order) {
-        order.setStatus(STATUS_FAILED);
+        order.setStatus(OrderStatus.FAILED);
         orderRepository.save(order);
     }
 

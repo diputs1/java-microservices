@@ -6,6 +6,7 @@ import com.tungdt.microservices.ordering.dto.OrderResponse;
 import com.tungdt.microservices.ordering.service.OrderingService;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,16 +24,19 @@ public class OrderingController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
         return ApiResponse.created(orderingService.create(request));
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<OrderResponse>> getAll() {
         return ApiResponse.ok(orderingService.getAll());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
     public ApiResponse<OrderResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(orderingService.getById(id));
     }

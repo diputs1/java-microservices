@@ -1,8 +1,10 @@
 package com.tungdt.microservices.common.error;
 
 import com.tungdt.microservices.common.api.ApiResponse;
+import com.tungdt.microservices.common.web.TraceHeaders;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -12,7 +14,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
-        return ResponseEntity.status(ex.getStatus()).body(ApiResponse.error(ex.getMessage()));
+        return ResponseEntity.status(ex.getStatus())
+                .headers(errorHeaders(ex.getErrorCode()))
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -21,17 +25,28 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(error -> error.getField() + " " + error.getDefaultMessage())
                 .orElse("Validation failed");
-        return ResponseEntity.badRequest().body(ApiResponse.error(message));
+        return ResponseEntity.badRequest()
+                .headers(errorHeaders(ErrorCode.VALIDATION_ERROR))
+                .body(ApiResponse.error(message));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraint(ConstraintViolationException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        return ResponseEntity.badRequest()
+                .headers(errorHeaders(ErrorCode.VALIDATION_ERROR))
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .headers(errorHeaders(ErrorCode.INTERNAL_ERROR))
                 .body(ApiResponse.error("Internal server error"));
+    }
+
+    private HttpHeaders errorHeaders(ErrorCode errorCode) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(TraceHeaders.ERROR_CODE, errorCode.name());
+        return headers;
     }
 }

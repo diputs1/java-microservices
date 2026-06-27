@@ -7,14 +7,25 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1434;databaseName=master;encrypt=false;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:Passw0rd!}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.SQLServerDialect
+
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}
+    audiences:
+      - ${APP_SECURITY_AUDIENCE:microservices-api}
+    client-id: ${APP_SECURITY_CLIENT_ID:identity-service}
 
 management:
   endpoints:

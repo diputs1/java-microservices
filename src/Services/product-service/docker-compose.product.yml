@@ -3,7 +3,7 @@ services:
     image: mysql:8.0.29
     container_name: productdb
     environment:
-      MYSQL_ROOT_PASSWORD: "Passw0rd!"
+      MYSQL_ROOT_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       MYSQL_DATABASE: productdb
     restart: unless-stopped
     volumes:
@@ -11,7 +11,7 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pPassw0rd!"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$${MYSQL_ROOT_PASSWORD}\""]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -25,7 +25,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://productdb:3306/productdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     depends_on:
       productdb:
         condition: service_healthy

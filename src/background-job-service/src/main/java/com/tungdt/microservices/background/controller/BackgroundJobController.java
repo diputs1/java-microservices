@@ -4,6 +4,7 @@ import com.tungdt.microservices.background.dto.JobEventResponse;
 import com.tungdt.microservices.background.service.BackgroundJobService;
 import com.tungdt.microservices.common.api.ApiResponse;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,7 @@ public class BackgroundJobController {
     }
 
     @GetMapping("/events")
+    @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<List<JobEventResponse>> getEvents() {
         return ApiResponse.ok(backgroundJobService.getAll());
     }

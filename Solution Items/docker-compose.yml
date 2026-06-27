@@ -22,6 +22,9 @@ services:
   rabbitmq:
     image: rabbitmq:3-management-alpine
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+
   pgadmin:
     image: dpage/pgadmin4
 
@@ -58,5 +61,7 @@ volumes:
     name: mongo_data
   pgadmin_data:
     name: pgadmin_data
+  keycloak_data:
+    name: keycloak_data
   identity_sqlserver_data:
     name: identity_sqlserver_data

@@ -8,6 +8,14 @@ spring:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/inventorydb}
 
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}
+    audiences:
+      - ${APP_SECURITY_AUDIENCE:microservices-api}
+    client-id: ${APP_SECURITY_CLIENT_ID:inventory-service}
+
 management:
   endpoints:
     web:

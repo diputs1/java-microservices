@@ -7,10 +7,13 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:sqlserver://localhost:1435;databaseName=master;encrypt=false;trustServerCertificate=true}
     username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:Passw0rd!}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
@@ -26,6 +29,19 @@ services:
     url: ${BASKET_SERVICE_URL:http://localhost:5004}
   inventory:
     url: ${INVENTORY_SERVICE_URL:http://localhost:5006}
+
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}
+    audiences:
+      - ${APP_SECURITY_AUDIENCE:microservices-api}
+    client-id: ${APP_SECURITY_CLIENT_ID:ordering-service}
+    service-account:
+      token-uri: ${APP_SECURITY_SERVICE_ACCOUNT_TOKEN_URI:}
+      client-id: ${APP_SECURITY_SERVICE_ACCOUNT_CLIENT_ID:ordering-service}
+      client-secret: ${APP_SECURITY_SERVICE_ACCOUNT_CLIENT_SECRET:}
+      scope: ${APP_SECURITY_SERVICE_ACCOUNT_SCOPE:internal}
 
 management:
   endpoints:

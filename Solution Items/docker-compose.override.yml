@@ -1,9 +1,20 @@
+x-security-env: &security-env
+  APP_SECURITY_ENABLED: ${APP_SECURITY_ENABLED:-false}
+  APP_SECURITY_ISSUER_URI: ${APP_SECURITY_ISSUER_URI:-http://keycloak:8080/realms/microservices}
+  APP_SECURITY_AUDIENCE: ${APP_SECURITY_AUDIENCE:-microservices-api}
+
 services:
   identitydb:
     container_name: identitydb
     environment:
-      SA_PASSWORD: "Passw0rd!"
+      MSSQL_SA_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       ACCEPT_EULA: "Y"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: always
     volumes:
       - identity_sqlserver_data:/var/opt/mssql
@@ -13,8 +24,14 @@ services:
   orderdb:
     container_name: orderdb
     environment:
-      SA_PASSWORD: "Passw0rd!"
+      MSSQL_SA_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       ACCEPT_EULA: "Y"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -Q \"SELECT 1\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     restart: always
     volumes:
       - sqlserver-data:/var/opt/mssql
@@ -24,8 +41,14 @@ services:
   productdb:
     container_name: productdb
     environment:
-      MYSQL_ROOT_PASSWORD: "Passw0rd!"
+      MYSQL_ROOT_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       MYSQL_DATABASE: productdb
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p\"$${MYSQL_ROOT_PASSWORD}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     restart: always
     volumes:
       - mysql_data:/var/lib/mysql
@@ -36,8 +59,13 @@ services:
     container_name: customerdb
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: "Passw0rd!"
+      POSTGRES_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       POSTGRES_DB: customerdb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d customerdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
     restart: always
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -46,12 +74,23 @@ services:
 
   basketdb:
     container_name: basketdb
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
     restart: always
     ports:
       - "6379:6379"
 
   inventorydb:
     container_name: inventorydb
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     restart: always
     volumes:
       - mongo_data:/data/db
@@ -60,16 +99,43 @@ services:
 
   rabbitmq:
     container_name: rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     restart: always
     ports:
       - "5672:5672"
       - "15672:15672"
 
+  keycloak:
+    container_name: keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: always
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ../infra/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8080:8080"
+
   pgadmin:
     container_name: pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local.dev
-      PGADMIN_DEFAULT_PASSWORD: "Passw0rd!"
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@local.dev}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Set PGADMIN_DEFAULT_PASSWORD in .env}
     restart: always
     volumes:
       - pgadmin_data:/var/lib/pgadmin
@@ -96,13 +162,20 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
   kibana:
     container_name: kibana
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     restart: always
     ports:
       - "5601:5601"
@@ -114,6 +187,7 @@ services:
       context: ..
       dockerfile: src/gateway-service/Dockerfile
     environment:
+      <<: *security-env
       IDENTITY_SERVICE_URL: http://identity-service:5001
       PRODUCT_SERVICE_URL: http://product-service:5002
       CUSTOMER_SERVICE_URL: http://customer-service:5003
@@ -123,14 +197,30 @@ services:
       BACKGROUND_JOB_SERVICE_URL: http://background-job-service:5007
       EMAIL_SERVICE_URL: http://email-service:5008
     depends_on:
-      - identity-service
-      - product-service
-      - customer-service
-      - basket-service
-      - ordering-service
-      - inventory-service
-      - background-job-service
-      - email-service
+      identity-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      basket-service:
+        condition: service_healthy
+      ordering-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      background-job-service:
+        condition: service_healthy
+      email-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5000/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5000:5000"
 
@@ -141,11 +231,21 @@ services:
       context: ..
       dockerfile: src/Services/identity-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://identitydb:1433;databaseName=master;encrypt=false;trustServerCertificate=true"
       SPRING_DATASOURCE_USERNAME: sa
-      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     depends_on:
-      - identitydb
+      identitydb:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5001/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5001:5001"
 
@@ -156,11 +256,21 @@ services:
       context: ..
       dockerfile: src/Services/product-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATASOURCE_URL: "jdbc:mysql://productdb:3306/productdb?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false"
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     depends_on:
-      - productdb
+      productdb:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5002/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5002:5002"
 
@@ -171,11 +281,21 @@ services:
       context: ..
       dockerfile: src/Services/customer-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://customerdb:5432/customerdb
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
     depends_on:
-      - customerdb
+      customerdb:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5003/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5003:5003"
 
@@ -186,10 +306,20 @@ services:
       context: ..
       dockerfile: src/Services/basket-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATA_REDIS_HOST: basketdb
       SPRING_DATA_REDIS_PORT: 6379
     depends_on:
-      - basketdb
+      basketdb:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5004/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5004:5004"
 
@@ -200,13 +330,34 @@ services:
       context: ..
       dockerfile: src/Services/ordering-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATASOURCE_URL: "jdbc:sqlserver://orderdb:1433;databaseName=master;encrypt=false;trustServerCertificate=true"
       SPRING_DATASOURCE_USERNAME: sa
-      SPRING_DATASOURCE_PASSWORD: "Passw0rd!"
+      SPRING_DATASOURCE_PASSWORD: ${LOCAL_DB_PASSWORD:?Set LOCAL_DB_PASSWORD in .env}
       SPRING_RABBITMQ_HOST: rabbitmq
+      BASKET_SERVICE_URL: http://basket-service:5004
+      INVENTORY_SERVICE_URL: http://inventory-service:5006
+      APP_SECURITY_SERVICE_ACCOUNT_TOKEN_URI: ${APP_SECURITY_SERVICE_ACCOUNT_TOKEN_URI:-http://keycloak:8080/realms/microservices/protocol/openid-connect/token}
+      APP_SECURITY_SERVICE_ACCOUNT_CLIENT_ID: ordering-service
+      APP_SECURITY_SERVICE_ACCOUNT_CLIENT_SECRET: ${KEYCLOAK_ORDERING_CLIENT_SECRET:-local-ordering-secret-change-me}
+      APP_SECURITY_SERVICE_ACCOUNT_SCOPE: internal
     depends_on:
-      - orderdb
-      - rabbitmq
+      orderdb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      basket-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5005/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5005:5005"
 
@@ -217,9 +368,19 @@ services:
       context: ..
       dockerfile: src/Services/inventory-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATA_MONGODB_URI: mongodb://inventorydb:27017/inventorydb
     depends_on:
-      - inventorydb
+      inventorydb:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5006/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5006:5006"
 
@@ -230,11 +391,22 @@ services:
       context: ..
       dockerfile: src/background-job-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_DATA_MONGODB_URI: mongodb://inventorydb:27017/jobdb
       SPRING_RABBITMQ_HOST: rabbitmq
     depends_on:
-      - inventorydb
-      - rabbitmq
+      inventorydb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5007/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5007:5007"
 
@@ -245,8 +417,18 @@ services:
       context: ..
       dockerfile: src/Services/email-service/Dockerfile
     environment:
+      <<: *security-env
       SPRING_RABBITMQ_HOST: rabbitmq
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5008/actuator/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
     ports:
       - "5008:5008"

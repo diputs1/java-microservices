@@ -2,6 +2,7 @@ package com.tungdt.microservices.basket.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tungdt.microservices.basket.config.BasketProperties;
 import com.tungdt.microservices.basket.dto.BasketResponse;
 import com.tungdt.microservices.common.error.BusinessException;
 import java.util.Optional;
@@ -14,15 +15,21 @@ public class BasketRepository {
     private static final String KEY_PREFIX = "basket:";
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final BasketProperties basketProperties;
 
-    public BasketRepository(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
+    public BasketRepository(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, BasketProperties basketProperties) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        this.basketProperties = basketProperties;
     }
 
     public BasketResponse save(BasketResponse basket) {
         try {
-            redisTemplate.opsForValue().set(KEY_PREFIX + basket.customerId(), objectMapper.writeValueAsString(basket));
+            redisTemplate.opsForValue().set(
+                    KEY_PREFIX + basket.customerId(),
+                    objectMapper.writeValueAsString(basket),
+                    basketProperties.getTtl()
+            );
             return basket;
         } catch (JsonProcessingException ex) {
             throw new BusinessException("Cannot save basket", HttpStatus.INTERNAL_SERVER_ERROR);

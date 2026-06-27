@@ -5,6 +5,7 @@ import com.tungdt.microservices.inventory.dto.InventoryRequest;
 import com.tungdt.microservices.inventory.dto.InventoryReservationItemRequest;
 import com.tungdt.microservices.inventory.dto.InventoryReservationRequest;
 import com.tungdt.microservices.inventory.dto.InventoryReservationResponse;
+import com.tungdt.microservices.inventory.dto.InventoryReservationStatus;
 import com.tungdt.microservices.inventory.dto.InventoryResponse;
 import com.tungdt.microservices.inventory.entity.InventoryEntity;
 import com.tungdt.microservices.inventory.repository.InventoryRepository;
@@ -64,7 +65,7 @@ public class InventoryService {
                 reservedItems.add(item);
             }
             log.info("Reserved inventory items={}", reservedItems.size());
-            return new InventoryReservationResponse("RESERVED", reservedItems);
+            return new InventoryReservationResponse(InventoryReservationStatus.RESERVED.name(), reservedItems);
         } catch (RuntimeException ex) {
             releaseReservedItems(reservedItems);
             throw ex;
@@ -74,7 +75,7 @@ public class InventoryService {
     public InventoryReservationResponse release(InventoryReservationRequest request) {
         releaseReservedItems(request.items());
         log.info("Released inventory items={}", request.items().size());
-        return new InventoryReservationResponse("RELEASED", request.items());
+        return new InventoryReservationResponse(InventoryReservationStatus.RELEASED.name(), request.items());
     }
 
     private void apply(InventoryRequest request, InventoryEntity item) {

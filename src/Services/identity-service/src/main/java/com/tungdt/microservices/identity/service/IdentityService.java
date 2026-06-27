@@ -1,11 +1,12 @@
 package com.tungdt.microservices.identity.service;
 
 import com.tungdt.microservices.common.error.BusinessException;
-import com.tungdt.microservices.identity.dto.AccountResponse;
 import com.tungdt.microservices.identity.dto.LoginRequest;
 import com.tungdt.microservices.identity.dto.LoginResponse;
 import com.tungdt.microservices.identity.dto.RegisterRequest;
 import com.tungdt.microservices.identity.entity.AccountEntity;
+import com.tungdt.microservices.identity.dto.AccountResponse;
+import com.tungdt.microservices.identity.mapper.AccountMapper;
 import com.tungdt.microservices.identity.repository.AccountRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -23,10 +24,14 @@ public class IdentityService {
     private static final Logger log = LoggerFactory.getLogger(IdentityService.class);
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccountMapper accountMapper;
 
-    public IdentityService(AccountRepository accountRepository, PasswordEncoder passwordEncoder) {
+    public IdentityService(AccountRepository accountRepository,
+            PasswordEncoder passwordEncoder,
+            AccountMapper accountMapper) {
         this.accountRepository = accountRepository;
         this.passwordEncoder = passwordEncoder;
+        this.accountMapper = accountMapper;
     }
 
     @Transactional
@@ -43,7 +48,7 @@ public class IdentityService {
         account.setEmail(request.email());
         account.setPasswordHash(passwordEncoder.encode(request.password()));
         account.setRole(request.role() == null || request.role().isBlank() ? "CUSTOMER" : request.role());
-        return toResponse(accountRepository.save(account));
+        return accountMapper.toResponse(accountRepository.save(account));
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -53,11 +58,11 @@ public class IdentityService {
             throw new BusinessException("Invalid username or password", HttpStatus.UNAUTHORIZED);
         }
         log.info("Login account username={}", request.username());
-        return new LoginResponse(createDemoToken(account), "Bearer", toResponse(account));
+        return new LoginResponse(createDemoToken(account), "Bearer", accountMapper.toResponse(account));
     }
 
     public List<AccountResponse> getAll() {
-        return accountRepository.findAll().stream().map(this::toResponse).toList();
+        return accountRepository.findAll().stream().map(accountMapper::toResponse).toList();
     }
 
     private String createDemoToken(AccountEntity account) {
@@ -65,7 +70,4 @@ public class IdentityService {
         return Base64.getUrlEncoder().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 
-    private AccountResponse toResponse(AccountEntity account) {
-        return new AccountResponse(account.getId(), account.getUsername(), account.getEmail(), account.getRole());
-    }
 }
