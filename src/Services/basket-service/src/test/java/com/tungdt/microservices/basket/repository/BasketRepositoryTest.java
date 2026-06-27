@@ -7,8 +7,8 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.basket.config.BasketProperties;
-import com.tungdt.microservices.basket.dto.BasketItemResponse;
-import com.tungdt.microservices.basket.dto.BasketResponse;
+import com.tungdt.microservices.basket.entity.BasketEntity;
+import com.tungdt.microservices.basket.entity.BasketItemEntity;
 import com.tungdt.microservices.common.error.BusinessException;
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -42,9 +42,9 @@ class BasketRepositoryTest {
     @Test
     void saveSerializesBasketUnderCustomerKey() throws Exception {
         useValueOperations();
-        BasketResponse basket = basket();
+        BasketEntity basket = basket();
 
-        BasketResponse response = basketRepository.save(basket);
+        BasketEntity response = basketRepository.save(basket);
 
         verify(valueOperations).set("basket:customer-1", new ObjectMapper().writeValueAsString(basket), Duration.ofMinutes(30));
         assertThat(response).isSameAs(basket);
@@ -53,11 +53,14 @@ class BasketRepositoryTest {
     @Test
     void findByCustomerIdDeserializesStoredBasket() throws Exception {
         useValueOperations();
-        BasketResponse basket = basket();
+        BasketEntity basket = basket();
         when(valueOperations.get("basket:customer-1"))
                 .thenReturn(new ObjectMapper().writeValueAsString(basket));
 
-        assertThat(basketRepository.findByCustomerId("customer-1")).contains(basket);
+        assertThat(basketRepository.findByCustomerId("customer-1"))
+                .get()
+                .usingRecursiveComparison()
+                .isEqualTo(basket);
     }
 
     @Test
@@ -87,12 +90,18 @@ class BasketRepositoryTest {
         verify(redisTemplate).delete("basket:customer-1");
     }
 
-    private BasketResponse basket() {
-        return new BasketResponse(
-                "customer-1",
-                List.of(new BasketItemResponse("SKU-1", "Product one", 2, new BigDecimal("10.50"))),
-                new BigDecimal("21.00")
-        );
+    private BasketEntity basket() {
+        BasketItemEntity item = new BasketItemEntity();
+        item.setSku("SKU-1");
+        item.setProductName("Product one");
+        item.setQuantity(2);
+        item.setUnitPrice(new BigDecimal("10.50"));
+
+        BasketEntity basket = new BasketEntity();
+        basket.setCustomerId("customer-1");
+        basket.setItems(List.of(item));
+        basket.setTotalAmount(new BigDecimal("21.00"));
+        return basket;
     }
 
     private void useValueOperations() {
