@@ -10,6 +10,8 @@ import com.tungdt.microservices.basket.dto.BasketItemRequest;
 import com.tungdt.microservices.basket.dto.BasketItemResponse;
 import com.tungdt.microservices.basket.dto.BasketRequest;
 import com.tungdt.microservices.basket.dto.BasketResponse;
+import com.tungdt.microservices.basket.entity.BasketEntity;
+import com.tungdt.microservices.basket.entity.BasketItemEntity;
 import com.tungdt.microservices.basket.repository.BasketRepository;
 import com.tungdt.microservices.common.error.BusinessException;
 import java.math.BigDecimal;
@@ -37,14 +39,15 @@ class BasketServiceTest {
                 new BasketItemRequest("SKU-1", "Product one", 2, new BigDecimal("10.50")),
                 new BasketItemRequest("SKU-2", "Product two", 1, new BigDecimal("5.25"))
         ));
-        when(basketRepository.save(any(BasketResponse.class)))
+        when(basketRepository.save(any(BasketEntity.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         BasketResponse response = basketService.save(request);
 
-        ArgumentCaptor<BasketResponse> captor = ArgumentCaptor.forClass(BasketResponse.class);
+        ArgumentCaptor<BasketEntity> captor = ArgumentCaptor.forClass(BasketEntity.class);
         verify(basketRepository).save(captor.capture());
-        assertThat(captor.getValue()).isEqualTo(response);
+        assertThat(captor.getValue().getCustomerId()).isEqualTo(response.customerId());
+        assertThat(captor.getValue().getTotalAmount()).isEqualByComparingTo(response.totalAmount());
         assertThat(response.customerId()).isEqualTo("customer-1");
         assertThat(response.items()).containsExactly(
                 new BasketItemResponse("SKU-1", "Product one", 2, new BigDecimal("10.50")),
@@ -55,12 +58,14 @@ class BasketServiceTest {
 
     @Test
     void getByCustomerIdReturnsExistingBasket() {
-        BasketResponse basket = new BasketResponse("customer-1", List.of(), BigDecimal.ZERO);
+        BasketEntity basket = basket("customer-1", List.of(), BigDecimal.ZERO);
         when(basketRepository.findByCustomerId("customer-1")).thenReturn(Optional.of(basket));
 
         BasketResponse response = basketService.getByCustomerId("customer-1");
 
-        assertThat(response).isSameAs(basket);
+        assertThat(response.customerId()).isEqualTo("customer-1");
+        assertThat(response.items()).isEmpty();
+        assertThat(response.totalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
     @Test
@@ -79,5 +84,13 @@ class BasketServiceTest {
         basketService.delete("customer-1");
 
         verify(basketRepository).delete("customer-1");
+    }
+
+    private BasketEntity basket(String customerId, List<BasketItemEntity> items, BigDecimal totalAmount) {
+        BasketEntity basket = new BasketEntity();
+        basket.setCustomerId(customerId);
+        basket.setItems(items);
+        basket.setTotalAmount(totalAmount);
+        return basket;
     }
 }

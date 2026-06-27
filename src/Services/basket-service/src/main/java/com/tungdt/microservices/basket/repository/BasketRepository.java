@@ -3,7 +3,7 @@ package com.tungdt.microservices.basket.repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.basket.config.BasketProperties;
-import com.tungdt.microservices.basket.dto.BasketResponse;
+import com.tungdt.microservices.basket.entity.BasketEntity;
 import com.tungdt.microservices.common.error.BusinessException;
 import java.util.Optional;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,10 +23,10 @@ public class BasketRepository {
         this.basketProperties = basketProperties;
     }
 
-    public BasketResponse save(BasketResponse basket) {
+    public BasketEntity save(BasketEntity basket) {
         try {
             redisTemplate.opsForValue().set(
-                    KEY_PREFIX + basket.customerId(),
+                    KEY_PREFIX + basket.getCustomerId(),
                     objectMapper.writeValueAsString(basket),
                     basketProperties.getTtl()
             );
@@ -36,13 +36,13 @@ public class BasketRepository {
         }
     }
 
-    public Optional<BasketResponse> findByCustomerId(String customerId) {
+    public Optional<BasketEntity> findByCustomerId(String customerId) {
         String value = redisTemplate.opsForValue().get(KEY_PREFIX + customerId);
         if (value == null) {
             return Optional.empty();
         }
         try {
-            return Optional.of(objectMapper.readValue(value, BasketResponse.class));
+            return Optional.of(objectMapper.readValue(value, BasketEntity.class));
         } catch (JsonProcessingException ex) {
             throw new BusinessException("Cannot read basket", HttpStatus.INTERNAL_SERVER_ERROR);
         }
