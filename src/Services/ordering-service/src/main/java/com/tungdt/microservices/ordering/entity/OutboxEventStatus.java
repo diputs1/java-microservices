@@ -1,8 +1,7 @@
 package com.tungdt.microservices.ordering.entity;
 
-public enum OrderStatus {
+public enum OutboxEventStatus {
     PENDING,
-    INVENTORY_RESERVED,
-    COMPLETED,
+    PUBLISHED,
     FAILED
 }

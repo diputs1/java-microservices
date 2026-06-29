@@ -5,11 +5,15 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.CascadeType;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "orders")
@@ -26,6 +30,12 @@ public class OrderEntity {
 
     @Column(nullable = false, length = 32)
     private String status;
+
+    @Column(length = 128)
+    private String idempotencyKey;
+
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItemEntity> items = new ArrayList<>();
 
     @Column(nullable = false)
     private Instant createdAt;
@@ -77,6 +87,23 @@ public class OrderEntity {
 
     public void setStatus(OrderStatus status) {
         this.status = status.name();
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public List<OrderItemEntity> getItems() {
+        return items;
+    }
+
+    public void addItem(OrderItemEntity item) {
+        item.setOrder(this);
+        items.add(item);
     }
 
     public Instant getCreatedAt() {
