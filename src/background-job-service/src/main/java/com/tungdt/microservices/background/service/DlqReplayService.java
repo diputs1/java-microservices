@@ -3,6 +3,8 @@ package com.tungdt.microservices.background.service;
 import com.tungdt.microservices.background.config.QueueConfig;
 import com.tungdt.microservices.background.dto.DlqReplayResponse;
 import com.tungdt.microservices.common.error.BusinessException;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,9 +14,11 @@ public class DlqReplayService {
     private static final int DEFAULT_LIMIT = 100;
 
     private final RabbitTemplate rabbitTemplate;
+    private final MeterRegistry meterRegistry;
 
-    public DlqReplayService(RabbitTemplate rabbitTemplate) {
+    public DlqReplayService(RabbitTemplate rabbitTemplate, MeterRegistry meterRegistry) {
         this.rabbitTemplate = rabbitTemplate;
+        this.meterRegistry = meterRegistry;
     }
 
     public DlqReplayResponse replay(String queueName, Integer limit) {
@@ -33,6 +37,9 @@ public class DlqReplayService {
             rabbitTemplate.convertAndSend(QueueConfig.EVENTS_EXCHANGE, deadLetterQueue.routingKey(), message);
             replayedCount++;
         }
+        meterRegistry.counter("dlq.replay",
+                Tags.of("queue", deadLetterQueue.dlqName(), "routingKey", deadLetterQueue.routingKey()))
+                .increment(replayedCount);
         return new DlqReplayResponse(deadLetterQueue.dlqName(), replayedCount);
     }
 

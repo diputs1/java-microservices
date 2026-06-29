@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.tungdt.microservices.background.config.QueueConfig;
 import com.tungdt.microservices.background.dto.DlqReplayResponse;
 import com.tungdt.microservices.common.error.BusinessException;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +27,7 @@ class DlqReplayServiceTest {
 
     @BeforeEach
     void setUp() {
-        dlqReplayService = new DlqReplayService(rabbitTemplate);
+        dlqReplayService = new DlqReplayService(rabbitTemplate, new SimpleMeterRegistry());
     }
 
     @Test

@@ -11,6 +11,7 @@ public record EventEnvelope(
         String aggregateType,
         String aggregateId,
         Instant occurredAt,
+        String traceId,
         JsonNode data
 ) {
 }

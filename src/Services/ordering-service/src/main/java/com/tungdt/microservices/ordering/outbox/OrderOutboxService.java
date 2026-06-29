@@ -3,11 +3,13 @@ package com.tungdt.microservices.ordering.outbox;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.common.error.BusinessException;
+import com.tungdt.microservices.common.web.TraceIdFilter;
 import com.tungdt.microservices.ordering.entity.OrderEntity;
 import com.tungdt.microservices.ordering.entity.OutboxEventEntity;
 import com.tungdt.microservices.ordering.repository.OutboxEventRepository;
 import java.time.Instant;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +42,7 @@ public class OrderOutboxService {
                 "ORDER",
                 String.valueOf(order.getId()),
                 occurredAt,
+                MDC.get(TraceIdFilter.MDC_KEY),
                 event
         );
 

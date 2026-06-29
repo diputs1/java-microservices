@@ -11,6 +11,7 @@ public class JobEventEntity {
     private String id;
     @Indexed(unique = true, sparse = true)
     private String eventId;
+    private String traceId;
     private String type;
     private String routingKey;
     private String payload;
@@ -26,6 +27,14 @@ public class JobEventEntity {
 
     public void setEventId(String eventId) {
         this.eventId = eventId;
+    }
+
+    public String getTraceId() {
+        return traceId;
+    }
+
+    public void setTraceId(String traceId) {
+        this.traceId = traceId;
     }
 
     public String getType() {
