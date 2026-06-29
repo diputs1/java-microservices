@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class OrderOutboxService {
+    public static final String EVENTS_EXCHANGE = "microservices.events";
     public static final String ORDER_CREATED_ROUTING_KEY = "order.created";
 
     private final OutboxEventRepository outboxEventRepository;
@@ -48,6 +49,7 @@ public class OrderOutboxService {
             outboxEvent.setEventType("ORDER_CREATED");
             outboxEvent.setAggregateType("ORDER");
             outboxEvent.setAggregateId(String.valueOf(order.getId()));
+            outboxEvent.setExchangeName(EVENTS_EXCHANGE);
             outboxEvent.setRoutingKey(ORDER_CREATED_ROUTING_KEY);
             outboxEvent.setPayload(objectMapper.writeValueAsString(envelope));
             outboxEventRepository.save(outboxEvent);
