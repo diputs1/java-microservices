@@ -26,6 +26,9 @@ public class OutboxEventEntity {
     @Column(nullable = false, length = 128)
     private String routingKey;
 
+    @Column(nullable = false, length = 128)
+    private String exchangeName;
+
     @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String payload;
 
@@ -86,6 +89,14 @@ public class OutboxEventEntity {
 
     public void setRoutingKey(String routingKey) {
         this.routingKey = routingKey;
+    }
+
+    public String getExchangeName() {
+        return exchangeName;
+    }
+
+    public void setExchangeName(String exchangeName) {
+        this.exchangeName = exchangeName;
     }
 
     public String getPayload() {

@@ -35,7 +35,7 @@ public class OutboxRelayService {
 
     private void publish(OutboxEventEntity event) {
         try {
-            rabbitTemplate.convertAndSend(event.getRoutingKey(), event.getPayload());
+            rabbitTemplate.convertAndSend(event.getExchangeName(), event.getRoutingKey(), event.getPayload());
             event.setStatus(OutboxEventStatus.PUBLISHED);
             event.setPublishedAt(Instant.now());
             event.setLastError(null);
