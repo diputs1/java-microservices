@@ -33,6 +33,13 @@ public class OutboxRelayService {
         }
     }
 
+    @Transactional
+    public int resetFailedEvents() {
+        var failedEvents = outboxEventRepository.findByStatusOrderByCreatedAtAsc(OutboxEventStatus.FAILED.name());
+        failedEvents.forEach(OutboxEventEntity::resetForRetry);
+        return failedEvents.size();
+    }
+
     private void publish(OutboxEventEntity event) {
         try {
             rabbitTemplate.convertAndSend(event.getExchangeName(), event.getRoutingKey(), event.getPayload());
