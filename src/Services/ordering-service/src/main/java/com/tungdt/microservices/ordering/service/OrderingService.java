@@ -28,10 +28,10 @@ public class OrderingService {
         this.resourceAccessGuard = resourceAccessGuard;
     }
 
-    public OrderResponse create(OrderRequest request) {
+    public OrderResponse create(OrderRequest request, String idempotencyKey) {
         assertCanAccessCustomer(request.customerId());
-        log.info("Create order customerId={}", request.customerId());
-        return orderSagaService.createOrder(request);
+        log.info("Create order customerId={} idempotencyKeyPresent={}", request.customerId(), idempotencyKey != null);
+        return orderSagaService.createOrder(request, idempotencyKey);
     }
 
     public List<OrderResponse> getAll() {
