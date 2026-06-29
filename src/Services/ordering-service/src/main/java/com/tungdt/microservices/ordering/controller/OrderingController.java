@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,8 +26,9 @@ public class OrderingController {
 
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER') or hasRole('ADMIN')")
-    public ApiResponse<OrderResponse> create(@Valid @RequestBody OrderRequest request) {
-        return ApiResponse.created(orderingService.create(request));
+    public ApiResponse<OrderResponse> create(@Valid @RequestBody OrderRequest request,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
+        return ApiResponse.created(orderingService.create(request, idempotencyKey));
     }
 
     @GetMapping

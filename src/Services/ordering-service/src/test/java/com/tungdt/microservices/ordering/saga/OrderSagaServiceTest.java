@@ -20,9 +20,11 @@ import com.tungdt.microservices.ordering.client.InventoryReservationItemRequest;
 import com.tungdt.microservices.ordering.dto.OrderRequest;
 import com.tungdt.microservices.ordering.dto.OrderResponse;
 import com.tungdt.microservices.ordering.entity.OrderEntity;
+import com.tungdt.microservices.ordering.outbox.OrderOutboxService;
 import com.tungdt.microservices.ordering.repository.OrderRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +32,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -46,13 +47,13 @@ class OrderSagaServiceTest {
     private InventoryClient inventoryClient;
 
     @Mock
-    private RabbitTemplate rabbitTemplate;
+    private OrderOutboxService orderOutboxService;
 
     private OrderSagaService orderSagaService;
 
     @BeforeEach
     void setUp() {
-        orderSagaService = new OrderSagaService(orderRepository, basketClient, inventoryClient, rabbitTemplate);
+        orderSagaService = new OrderSagaService(orderRepository, basketClient, inventoryClient, orderOutboxService);
     }
 
     @Test
@@ -64,16 +65,18 @@ class OrderSagaServiceTest {
         when(basketClient.getBasket("42")).thenReturn(basket);
         stubSavedOrderWithId(100L);
 
-        OrderResponse response = orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("21.00")));
+        OrderResponse response = orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("21.00")), null);
 
         assertThat(response.id()).isEqualTo(100L);
         assertThat(response.status()).isEqualTo("COMPLETED");
-        InOrder calls = inOrder(basketClient, inventoryClient, orderRepository, rabbitTemplate);
+        InOrder calls = inOrder(basketClient, inventoryClient, orderRepository, orderOutboxService);
         calls.verify(basketClient).getBasket("42");
+        calls.verify(orderRepository).save(any(OrderEntity.class));
         calls.verify(inventoryClient).reserve(List.of(new InventoryReservationItemRequest("SKU-1", 2)));
         calls.verify(orderRepository).save(any(OrderEntity.class));
         calls.verify(basketClient).deleteBasket("42");
-        calls.verify(rabbitTemplate).convertAndSend("order.created", "order:100");
+        calls.verify(orderRepository).save(any(OrderEntity.class));
+        calls.verify(orderOutboxService).saveOrderCreated(any(OrderEntity.class));
         verify(inventoryClient, never()).release(any());
     }
 
@@ -83,29 +86,33 @@ class OrderSagaServiceTest {
                 new BasketItemResponse("SKU-1", "Product one", 1, new BigDecimal("10.00"))
         ), "10.00"));
 
-        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("9.00"))))
+        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("9.00")), null))
                 .isInstanceOfSatisfying(BusinessException.class, exception -> {
                     assertThat(exception.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(exception.getMessage()).isEqualTo("Order total amount does not match basket");
                 });
-        verifyNoInteractions(inventoryClient, orderRepository, rabbitTemplate);
+        verifyNoInteractions(inventoryClient, orderRepository, orderOutboxService);
         verify(basketClient, never()).deleteBasket(any());
     }
 
     @Test
-    void createOrderDoesNotCompensateWhenReservationFails() {
+    void createOrderMarksFailedWhenReservationFails() {
         BasketResponse basket = basket(List.of(
                 new BasketItemResponse("SKU-1", "Product one", 1, new BigDecimal("10.00"))
         ), "10.00");
         when(basketClient.getBasket("42")).thenReturn(basket);
+        stubSavedOrderWithId(100L);
         RuntimeException reservationFailure = new RuntimeException("inventory unavailable");
         doThrow(reservationFailure).when(inventoryClient)
                 .reserve(List.of(new InventoryReservationItemRequest("SKU-1", 1)));
 
-        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00"))))
+        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00")), null))
                 .isSameAs(reservationFailure);
         verify(inventoryClient, never()).release(any());
-        verifyNoInteractions(orderRepository, rabbitTemplate);
+        ArgumentCaptor<OrderEntity> orderCaptor = ArgumentCaptor.forClass(OrderEntity.class);
+        verify(orderRepository, times(2)).save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().get(1).getStatus()).isEqualTo("FAILED");
+        verifyNoInteractions(orderOutboxService);
         verify(basketClient, never()).deleteBasket(any());
     }
 
@@ -119,34 +126,34 @@ class OrderSagaServiceTest {
         RuntimeException deletionFailure = new RuntimeException("basket unavailable");
         doThrow(deletionFailure).when(basketClient).deleteBasket("42");
 
-        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00"))))
+        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00")), null))
                 .isSameAs(deletionFailure);
 
         List<InventoryReservationItemRequest> items = List.of(new InventoryReservationItemRequest("SKU-1", 1));
         verify(inventoryClient).release(items);
         ArgumentCaptor<OrderEntity> orderCaptor = ArgumentCaptor.forClass(OrderEntity.class);
-        verify(orderRepository, times(2)).save(orderCaptor.capture());
-        assertThat(orderCaptor.getAllValues().get(1).getStatus()).isEqualTo("FAILED");
-        verifyNoInteractions(rabbitTemplate);
+        verify(orderRepository, times(3)).save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().get(2).getStatus()).isEqualTo("FAILED");
+        verifyNoInteractions(orderOutboxService);
     }
 
     @Test
-    void createOrderCompensatesWhenEventPublicationFails() {
+    void createOrderCompensatesWhenOutboxSaveFails() {
         BasketResponse basket = basket(List.of(
                 new BasketItemResponse("SKU-1", "Product one", 1, new BigDecimal("10.00"))
         ), "10.00");
         when(basketClient.getBasket("42")).thenReturn(basket);
         stubSavedOrderWithId(102L);
-        RuntimeException publicationFailure = new RuntimeException("rabbit unavailable");
-        doThrow(publicationFailure).when(rabbitTemplate).convertAndSend("order.created", "order:102");
+        RuntimeException outboxFailure = new RuntimeException("outbox unavailable");
+        doThrow(outboxFailure).when(orderOutboxService).saveOrderCreated(any(OrderEntity.class));
 
-        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00"))))
-                .isSameAs(publicationFailure);
+        assertThatThrownBy(() -> orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("10.00")), null))
+                .isSameAs(outboxFailure);
 
         verify(inventoryClient).release(List.of(new InventoryReservationItemRequest("SKU-1", 1)));
         ArgumentCaptor<OrderEntity> orderCaptor = ArgumentCaptor.forClass(OrderEntity.class);
-        verify(orderRepository, times(2)).save(orderCaptor.capture());
-        assertThat(orderCaptor.getAllValues().get(1).getStatus()).isEqualTo("FAILED");
+        verify(orderRepository, times(4)).save(orderCaptor.capture());
+        assertThat(orderCaptor.getAllValues().get(3).getStatus()).isEqualTo("FAILED");
     }
 
     @Test
@@ -158,9 +165,48 @@ class OrderSagaServiceTest {
         when(basketClient.getBasket("42")).thenReturn(basket);
         stubSavedOrderWithId(103L);
 
-        orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("25.00")));
+        orderSagaService.createOrder(new OrderRequest(42L, new BigDecimal("25.00")), null);
 
         verify(inventoryClient).reserve(List.of(new InventoryReservationItemRequest("SKU-1", 5)));
+    }
+
+    @Test
+    void createOrderReturnsExistingOrderForSameIdempotencyKey() {
+        OrderEntity existing = new OrderEntity();
+        ReflectionTestUtils.setField(existing, "id", 104L);
+        existing.setCustomerId(42L);
+        existing.setTotalAmount(new BigDecimal("10.00"));
+        existing.setStatus("COMPLETED");
+        existing.setCreatedAt(java.time.Instant.parse("2026-01-01T00:00:00Z"));
+        when(orderRepository.findByCustomerIdAndIdempotencyKey(42L, "checkout-1"))
+                .thenReturn(Optional.of(existing));
+
+        OrderResponse response = orderSagaService.createOrder(
+                new OrderRequest(42L, new BigDecimal("10.00")),
+                " checkout-1 "
+        );
+
+        assertThat(response.id()).isEqualTo(104L);
+        verifyNoInteractions(basketClient, inventoryClient, orderOutboxService);
+    }
+
+    @Test
+    void createOrderRejectsConflictingIdempotencyKey() {
+        OrderEntity existing = new OrderEntity();
+        ReflectionTestUtils.setField(existing, "id", 105L);
+        existing.setCustomerId(42L);
+        existing.setTotalAmount(new BigDecimal("10.00"));
+        existing.setStatus("COMPLETED");
+        when(orderRepository.findByCustomerIdAndIdempotencyKey(42L, "checkout-1"))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> orderSagaService.createOrder(
+                new OrderRequest(42L, new BigDecimal("11.00")),
+                "checkout-1"
+        )).isInstanceOfSatisfying(BusinessException.class, exception ->
+                assertThat(exception.getStatus()).isEqualTo(HttpStatus.CONFLICT));
+
+        verifyNoInteractions(basketClient, inventoryClient, orderOutboxService);
     }
 
     private BasketResponse basket(List<BasketItemResponse> items, String total) {
