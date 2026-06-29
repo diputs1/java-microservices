@@ -79,8 +79,16 @@ public class OutboxEventEntity {
         this.aggregateType = aggregateType;
     }
 
+    public String getAggregateType() {
+        return aggregateType;
+    }
+
     public void setAggregateId(String aggregateId) {
         this.aggregateId = aggregateId;
+    }
+
+    public String getAggregateId() {
+        return aggregateId;
     }
 
     public String getRoutingKey() {
@@ -133,5 +141,20 @@ public class OutboxEventEntity {
 
     public void setPublishedAt(Instant publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void resetForRetry() {
+        setStatus(OutboxEventStatus.PENDING);
+        attempts = 0;
+        lastError = null;
+        publishedAt = null;
     }
 }

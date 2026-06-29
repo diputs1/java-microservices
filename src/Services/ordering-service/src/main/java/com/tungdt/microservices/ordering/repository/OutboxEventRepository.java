@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, UUID> {
     List<OutboxEventEntity> findTop50ByStatusOrderByCreatedAtAsc(String status);
+
+    List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(String status);
 }
