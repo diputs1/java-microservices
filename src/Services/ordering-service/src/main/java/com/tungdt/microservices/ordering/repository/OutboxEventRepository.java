@@ -2,6 +2,7 @@ package com.tungdt.microservices.ordering.repository;
 
 import com.tungdt.microservices.ordering.entity.OutboxEventEntity;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -9,4 +10,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEventEntity, 
     List<OutboxEventEntity> findTop50ByStatusOrderByCreatedAtAsc(String status);
 
     List<OutboxEventEntity> findByStatusOrderByCreatedAtAsc(String status);
+
+    long countByStatus(String status);
+
+    Optional<OutboxEventEntity> findFirstByStatusOrderByCreatedAtAsc(String status);
 }
