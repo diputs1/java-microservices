@@ -10,6 +10,7 @@ public record OutboxEventEnvelope(
         String aggregateType,
         String aggregateId,
         Instant occurredAt,
+        String traceId,
         Object data
 ) {
 }

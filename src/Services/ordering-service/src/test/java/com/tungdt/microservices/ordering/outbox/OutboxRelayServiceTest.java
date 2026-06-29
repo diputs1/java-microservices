@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 import com.tungdt.microservices.ordering.entity.OutboxEventEntity;
 import com.tungdt.microservices.ordering.entity.OutboxEventStatus;
 import com.tungdt.microservices.ordering.repository.OutboxEventRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class OutboxRelayServiceTest {
 
     @BeforeEach
     void setUp() {
-        outboxRelayService = new OutboxRelayService(outboxEventRepository, rabbitTemplate);
+        outboxRelayService = new OutboxRelayService(outboxEventRepository, rabbitTemplate, new SimpleMeterRegistry());
     }
 
     @Test

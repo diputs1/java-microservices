@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.background.entity.JobEventEntity;
 import com.tungdt.microservices.background.repository.JobEventRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,11 @@ class BackgroundJobServiceTest {
 
     @BeforeEach
     void setUp() {
-        backgroundJobService = new BackgroundJobService(jobEventRepository, new ObjectMapper().findAndRegisterModules());
+        backgroundJobService = new BackgroundJobService(
+                jobEventRepository,
+                new ObjectMapper().findAndRegisterModules(),
+                new SimpleMeterRegistry()
+        );
     }
 
     @Test
@@ -40,16 +45,18 @@ class BackgroundJobServiceTest {
                   "aggregateType": "ORDER",
                   "aggregateId": "42",
                   "occurredAt": "2026-01-01T00:00:00Z",
+                  "traceId": "trace-123",
                   "data": {"orderId": 42}
                 }
                 """;
 
-        backgroundJobService.handleOrderCreated(payload, "order.created");
+        backgroundJobService.handleOrderCreated(payload, "order.created", null);
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
         verify(jobEventRepository).save(eventCaptor.capture());
         JobEventEntity event = eventCaptor.getValue();
         assertThat(event.getEventId()).isEqualTo(eventId.toString());
+        assertThat(event.getTraceId()).isEqualTo("trace-123");
         assertThat(event.getType()).isEqualTo("ORDER_CREATED");
         assertThat(event.getRoutingKey()).isEqualTo("order.created");
         assertThat(event.getPayload()).isEqualTo(payload);
@@ -67,12 +74,13 @@ class BackgroundJobServiceTest {
                   "aggregateType": "ORDER",
                   "aggregateId": "43",
                   "occurredAt": "2026-01-01T00:00:00Z",
+                  "traceId": "trace-duplicate",
                   "data": {"orderId": 43}
                 }
                 """;
         when(jobEventRepository.existsByEventId(eventId)).thenReturn(true);
 
-        backgroundJobService.handleOrderCreated(payload, "order.created");
+        backgroundJobService.handleOrderCreated(payload, "order.created", null);
 
         verify(jobEventRepository, never()).save(any());
     }
@@ -81,12 +89,13 @@ class BackgroundJobServiceTest {
     void handleEmailRequestedStoresLegacyPayloadWithoutEventId() {
         String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\"}";
 
-        backgroundJobService.handleEmailRequested(payload, "email.requested");
+        backgroundJobService.handleEmailRequested(payload, "email.requested", "trace-email");
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
         verify(jobEventRepository).save(eventCaptor.capture());
         JobEventEntity event = eventCaptor.getValue();
         assertThat(event.getEventId()).isNull();
+        assertThat(event.getTraceId()).isEqualTo("trace-email");
         assertThat(event.getType()).isEqualTo("EMAIL_REQUESTED");
         assertThat(event.getRoutingKey()).isEqualTo("email.requested");
     }
