@@ -44,6 +44,8 @@ public class OutboxEventEntity {
     @Column(nullable = false)
     private Instant createdAt;
 
+    private Instant claimedAt;
+
     private Instant publishedAt;
 
     @PrePersist
@@ -137,6 +139,14 @@ public class OutboxEventEntity {
 
     public void setLastError(String lastError) {
         this.lastError = lastError;
+    }
+
+    public Instant getClaimedAt() {
+        return claimedAt;
+    }
+
+    public void setClaimedAt(Instant claimedAt) {
+        this.claimedAt = claimedAt;
     }
 
     public void setPublishedAt(Instant publishedAt) {

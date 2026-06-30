@@ -9,7 +9,9 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.background.entity.JobEventEntity;
 import com.tungdt.microservices.background.repository.JobEventRepository;
+import com.tungdt.microservices.common.web.TraceHeaders;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 
 @ExtendWith(MockitoExtension.class)
 class BackgroundJobServiceTest {
@@ -50,7 +54,7 @@ class BackgroundJobServiceTest {
                 }
                 """;
 
-        backgroundJobService.handleOrderCreated(payload, "order.created", null);
+        backgroundJobService.handleOrderCreated(message(payload, "order.created", null, null));
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
         verify(jobEventRepository).save(eventCaptor.capture());
@@ -80,7 +84,7 @@ class BackgroundJobServiceTest {
                 """;
         when(jobEventRepository.existsByEventId(eventId)).thenReturn(true);
 
-        backgroundJobService.handleOrderCreated(payload, "order.created", null);
+        backgroundJobService.handleOrderCreated(message(payload, "order.created", null, null));
 
         verify(jobEventRepository, never()).save(any());
     }
@@ -89,7 +93,7 @@ class BackgroundJobServiceTest {
     void handleEmailRequestedStoresLegacyPayloadWithoutEventId() {
         String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\"}";
 
-        backgroundJobService.handleEmailRequested(payload, "email.requested", "trace-email");
+        backgroundJobService.handleEmailRequested(message(payload, "email.requested", null, "trace-email"));
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
         verify(jobEventRepository).save(eventCaptor.capture());
@@ -98,5 +102,31 @@ class BackgroundJobServiceTest {
         assertThat(event.getTraceId()).isEqualTo("trace-email");
         assertThat(event.getType()).isEqualTo("EMAIL_REQUESTED");
         assertThat(event.getRoutingKey()).isEqualTo("email.requested");
+    }
+
+    @Test
+    void handleEmailRequestedUsesMessageIdForLegacyPayloadIdempotency() {
+        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\"}";
+
+        backgroundJobService.handleEmailRequested(message(payload, "email.requested", "message-1", null));
+
+        ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
+        verify(jobEventRepository).save(eventCaptor.capture());
+        JobEventEntity event = eventCaptor.getValue();
+        assertThat(event.getEventId()).isEqualTo("message-1");
+        assertThat(event.getType()).isEqualTo("EMAIL_REQUESTED");
+    }
+
+    private Message message(String payload, String routingKey, String messageId, String traceId) {
+        MessageProperties properties = new MessageProperties();
+        properties.setReceivedRoutingKey(routingKey);
+        if (messageId != null) {
+            properties.setMessageId(messageId);
+            properties.setHeader("eventId", messageId);
+        }
+        if (traceId != null) {
+            properties.setHeader(TraceHeaders.TRACE_ID, traceId);
+        }
+        return new Message(payload.getBytes(StandardCharsets.UTF_8), properties);
     }
 }

@@ -10,14 +10,15 @@ import com.tungdt.microservices.common.web.TraceHeaders;
 import com.tungdt.microservices.common.web.TraceIdFilter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.support.AmqpHeaders;
-import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -36,29 +37,25 @@ public class BackgroundJobService {
     }
 
     @RabbitListener(queues = "order.created")
-    public void handleOrderCreated(String payload,
-            @Header(name = AmqpHeaders.RECEIVED_ROUTING_KEY, required = false) String routingKey,
-            @Header(name = TraceHeaders.TRACE_ID, required = false) String traceId) {
-        saveEvent("ORDER_CREATED", routingKey, traceId, payload);
+    public void handleOrderCreated(Message message) {
+        saveEvent("ORDER_CREATED", message);
     }
 
     @RabbitListener(queues = "email.requested")
-    public void handleEmailRequested(String payload,
-            @Header(name = AmqpHeaders.RECEIVED_ROUTING_KEY, required = false) String routingKey,
-            @Header(name = TraceHeaders.TRACE_ID, required = false) String traceId) {
-        saveEvent("EMAIL_REQUESTED", routingKey, traceId, payload);
+    public void handleEmailRequested(Message message) {
+        saveEvent("EMAIL_REQUESTED", message);
     }
 
     public List<JobEventResponse> getAll() {
         return jobEventRepository.findAll().stream().map(this::toResponse).toList();
     }
 
-    private void saveEvent(String fallbackType, String routingKey, String traceIdHeader, String payload) {
+    private void saveEvent(String fallbackType, Message message) {
+        String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+        String routingKey = message.getMessageProperties().getReceivedRoutingKey();
         EventEnvelope envelope = parseEnvelope(payload);
-        String eventId = envelope == null || envelope.eventId() == null ? null : envelope.eventId().toString();
-        String traceId = StringUtils.hasText(traceIdHeader)
-                ? traceIdHeader
-                : envelope == null ? null : envelope.traceId();
+        String eventId = resolveEventId(message, envelope);
+        String traceId = resolveTraceId(message, envelope);
 
         if (StringUtils.hasText(traceId)) {
             MDC.put(TraceIdFilter.MDC_KEY, traceId);
@@ -74,25 +71,34 @@ public class BackgroundJobService {
 
     private void saveEventWithTrace(String fallbackType, String routingKey, String payload, EventEnvelope envelope,
             String eventId, String traceId) {
+        String type = envelope == null || !StringUtils.hasText(envelope.eventType())
+                ? fallbackType
+                : envelope.eventType();
+
         if (StringUtils.hasText(eventId) && jobEventRepository.existsByEventId(eventId)) {
-            counter("duplicate", routingKey, fallbackType).increment();
+            counter("duplicate", routingKey, type).increment();
             log.info("Skip duplicate job event eventId={} routingKey={}", eventId, routingKey);
             return;
         }
 
-        String type = envelope == null || !StringUtils.hasText(envelope.eventType())
-                ? fallbackType
-                : envelope.eventType();
         log.info("Receive job event type={} eventId={} routingKey={}", type, eventId, routingKey);
         JobEventEntity event = new JobEventEntity();
-        event.setEventId(eventId);
+        if (StringUtils.hasText(eventId)) {
+            event.setEventId(eventId);
+        }
         event.setTraceId(traceId);
         event.setType(type);
         event.setRoutingKey(routingKey);
         event.setPayload(payload);
         event.setReceivedAt(Instant.now());
-        jobEventRepository.save(event);
-        counter("stored", routingKey, type).increment();
+
+        try {
+            jobEventRepository.save(event);
+            counter("stored", routingKey, type).increment();
+        } catch (DuplicateKeyException ex) {
+            counter("duplicate", routingKey, type).increment();
+            log.info("Skip duplicate job event eventId={} routingKey={}", eventId, routingKey);
+        }
     }
 
     private EventEnvelope parseEnvelope(String payload) {
@@ -105,6 +111,28 @@ public class BackgroundJobService {
         } catch (JsonProcessingException ex) {
             return null;
         }
+    }
+
+    private String resolveEventId(Message message, EventEnvelope envelope) {
+        Object eventIdHeader = message.getMessageProperties().getHeaders().get("eventId");
+        if (eventIdHeader != null && StringUtils.hasText(eventIdHeader.toString())) {
+            return eventIdHeader.toString();
+        }
+
+        String messageId = message.getMessageProperties().getMessageId();
+        if (StringUtils.hasText(messageId)) {
+            return messageId;
+        }
+
+        return envelope == null || envelope.eventId() == null ? null : envelope.eventId().toString();
+    }
+
+    private String resolveTraceId(Message message, EventEnvelope envelope) {
+        Object traceIdHeader = message.getMessageProperties().getHeaders().get(TraceHeaders.TRACE_ID);
+        if (traceIdHeader != null && StringUtils.hasText(traceIdHeader.toString())) {
+            return traceIdHeader.toString();
+        }
+        return envelope == null ? null : envelope.traceId();
     }
 
     private JobEventResponse toResponse(JobEventEntity event) {
