@@ -26,6 +26,9 @@ public class OutboxEventEntity {
     @Column(nullable = false, length = 128)
     private String routingKey;
 
+    @Column(nullable = false, length = 128)
+    private String exchangeName;
+
     @Column(nullable = false, columnDefinition = "NVARCHAR(MAX)")
     private String payload;
 
@@ -40,6 +43,8 @@ public class OutboxEventEntity {
 
     @Column(nullable = false)
     private Instant createdAt;
+
+    private Instant claimedAt;
 
     private Instant publishedAt;
 
@@ -76,8 +81,16 @@ public class OutboxEventEntity {
         this.aggregateType = aggregateType;
     }
 
+    public String getAggregateType() {
+        return aggregateType;
+    }
+
     public void setAggregateId(String aggregateId) {
         this.aggregateId = aggregateId;
+    }
+
+    public String getAggregateId() {
+        return aggregateId;
     }
 
     public String getRoutingKey() {
@@ -86,6 +99,14 @@ public class OutboxEventEntity {
 
     public void setRoutingKey(String routingKey) {
         this.routingKey = routingKey;
+    }
+
+    public String getExchangeName() {
+        return exchangeName;
+    }
+
+    public void setExchangeName(String exchangeName) {
+        this.exchangeName = exchangeName;
     }
 
     public String getPayload() {
@@ -120,7 +141,30 @@ public class OutboxEventEntity {
         this.lastError = lastError;
     }
 
+    public Instant getClaimedAt() {
+        return claimedAt;
+    }
+
+    public void setClaimedAt(Instant claimedAt) {
+        this.claimedAt = claimedAt;
+    }
+
     public void setPublishedAt(Instant publishedAt) {
         this.publishedAt = publishedAt;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
+    }
+
+    public void resetForRetry() {
+        setStatus(OutboxEventStatus.PENDING);
+        attempts = 0;
+        lastError = null;
+        publishedAt = null;
     }
 }

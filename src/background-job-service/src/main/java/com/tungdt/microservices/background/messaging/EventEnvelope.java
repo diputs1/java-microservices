@@ -1,9 +1,10 @@
-package com.tungdt.microservices.ordering.outbox;
+package com.tungdt.microservices.background.messaging;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Instant;
 import java.util.UUID;
 
-public record OutboxEventEnvelope(
+public record EventEnvelope(
         UUID eventId,
         String eventType,
         int version,
@@ -11,6 +12,6 @@ public record OutboxEventEnvelope(
         String aggregateId,
         Instant occurredAt,
         String traceId,
-        Object data
+        JsonNode data
 ) {
 }

@@ -7,11 +7,21 @@ spring:
   data:
     mongodb:
       uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/jobdb}
+      auto-index-creation: true
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: ${SPRING_RABBITMQ_LISTENER_RETRY_MAX_ATTEMPTS:3}
+          initial-interval: ${SPRING_RABBITMQ_LISTENER_RETRY_INITIAL_INTERVAL:1000}
+          multiplier: ${SPRING_RABBITMQ_LISTENER_RETRY_MULTIPLIER:2}
+          max-interval: ${SPRING_RABBITMQ_LISTENER_RETRY_MAX_INTERVAL:10000}
 
 app:
   security:
@@ -25,4 +35,4 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,metrics
