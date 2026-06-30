@@ -1,0 +1,64 @@
+name: Docker Build
+
+on:
+  pull_request:
+    branches:
+      - developer
+  push:
+    branches:
+      - developer
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: gateway-service
+            dockerfile: src/gateway-service/Dockerfile
+          - name: identity-service
+            dockerfile: src/Services/identity-service/Dockerfile
+          - name: product-service
+            dockerfile: src/Services/product-service/Dockerfile
+          - name: customer-service
+            dockerfile: src/Services/customer-service/Dockerfile
+          - name: basket-service
+            dockerfile: src/Services/basket-service/Dockerfile
+          - name: ordering-service
+            dockerfile: src/Services/ordering-service/Dockerfile
+          - name: inventory-service
+            dockerfile: src/Services/inventory-service/Dockerfile
+          - name: background-job-service
+            dockerfile: src/background-job-service/Dockerfile
+          - name: email-service
+            dockerfile: src/Services/email-service/Dockerfile
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          tags: java-microservices/${{ matrix.service.name }}:ci
+          push: false
+          load: false
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
