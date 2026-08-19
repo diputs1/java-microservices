@@ -40,7 +40,6 @@ class BackgroundJobServiceTest {
                 new SimpleMeterRegistry(),
                 emailDispatchService
         );
-        when(jobEventRepository.save(any(JobEventEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -97,6 +96,7 @@ class BackgroundJobServiceTest {
     @Test
     void handleEmailRequestedStoresLegacyPayloadWithoutEventId() {
         String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\",\"body\":\"Welcome\"}";
+        when(jobEventRepository.save(any(JobEventEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         backgroundJobService.handleEmailRequested(message(payload, "email.requested", null, "trace-email"));
 
@@ -113,6 +113,7 @@ class BackgroundJobServiceTest {
     @Test
     void handleEmailRequestedUsesMessageIdForLegacyPayloadIdempotency() {
         String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\",\"body\":\"Welcome\"}";
+        when(jobEventRepository.save(any(JobEventEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         backgroundJobService.handleEmailRequested(message(payload, "email.requested", "message-1", null));
 

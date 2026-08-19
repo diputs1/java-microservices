@@ -17,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.amqp.core.MessagePostProcessor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,12 +55,16 @@ class DailyGithubSummarySchedulerTest {
         scheduler.queueDailySummary();
 
         ArgumentCaptor<String> routingKeyCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
-        verify(rabbitTemplate).convertAndSend(routingKeyCaptor.capture(), payloadCaptor.capture(), any());
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(rabbitTemplate).convertAndSend(
+                routingKeyCaptor.capture(),
+                payloadCaptor.capture(),
+                any(MessagePostProcessor.class)
+        );
         assertThat(routingKeyCaptor.getValue()).isEqualTo("email.requested");
-        assertThat(payloadCaptor.getValue()).contains("dotung318@gmail.com");
-        assertThat(payloadCaptor.getValue()).contains("owner/repo");
-        assertThat(payloadCaptor.getValue()).contains("AI coding helper");
+        assertThat(payloadCaptor.getValue().toString()).contains("dotung318@gmail.com");
+        assertThat(payloadCaptor.getValue().toString()).contains("owner/repo");
+        assertThat(payloadCaptor.getValue().toString()).contains("AI coding helper");
     }
 
     @Test
@@ -68,6 +73,10 @@ class DailyGithubSummarySchedulerTest {
 
         scheduler.queueDailySummary();
 
-        verify(rabbitTemplate, never()).convertAndSend(any(String.class), any(String.class), any());
+        verify(rabbitTemplate, never()).convertAndSend(
+                any(String.class),
+                any(Object.class),
+                any(MessagePostProcessor.class)
+        );
     }
 }
