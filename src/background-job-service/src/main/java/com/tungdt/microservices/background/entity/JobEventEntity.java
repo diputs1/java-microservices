@@ -15,7 +15,10 @@ public class JobEventEntity {
     private String type;
     private String routingKey;
     private String payload;
+    private JobEventStatus status;
     private Instant receivedAt;
+    private Instant processedAt;
+    private String lastError;
 
     public String getId() {
         return id;
@@ -61,11 +64,35 @@ public class JobEventEntity {
         this.payload = payload;
     }
 
+    public JobEventStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(JobEventStatus status) {
+        this.status = status;
+    }
+
     public Instant getReceivedAt() {
         return receivedAt;
     }
 
     public void setReceivedAt(Instant receivedAt) {
         this.receivedAt = receivedAt;
+    }
+
+    public Instant getProcessedAt() {
+        return processedAt;
+    }
+
+    public void setProcessedAt(Instant processedAt) {
+        this.processedAt = processedAt;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public void setLastError(String lastError) {
+        this.lastError = lastError;
     }
 }

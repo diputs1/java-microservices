@@ -394,6 +394,13 @@ services:
       <<: *security-env
       SPRING_DATA_MONGODB_URI: mongodb://inventorydb:27017/jobdb
       SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-}
+      APP_GITHUB_SUMMARY_RECIPIENT: ${APP_GITHUB_SUMMARY_RECIPIENT:-dotung318@gmail.com}
+      APP_GITHUB_SUMMARY_TOKEN: ${APP_GITHUB_SUMMARY_TOKEN:-}
     depends_on:
       inventorydb:
         condition: service_healthy

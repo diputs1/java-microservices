@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tungdt.microservices.background.dto.JobEventResponse;
 import com.tungdt.microservices.background.entity.JobEventEntity;
+import com.tungdt.microservices.background.entity.JobEventStatus;
 import com.tungdt.microservices.background.messaging.EventEnvelope;
 import com.tungdt.microservices.background.repository.JobEventRepository;
 import com.tungdt.microservices.common.web.TraceHeaders;
@@ -28,12 +29,14 @@ public class BackgroundJobService {
     private final JobEventRepository jobEventRepository;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final EmailDispatchService emailDispatchService;
 
     public BackgroundJobService(JobEventRepository jobEventRepository, ObjectMapper objectMapper,
-            MeterRegistry meterRegistry) {
+            MeterRegistry meterRegistry, EmailDispatchService emailDispatchService) {
         this.jobEventRepository = jobEventRepository;
         this.objectMapper = objectMapper;
         this.meterRegistry = meterRegistry;
+        this.emailDispatchService = emailDispatchService;
     }
 
     @RabbitListener(queues = "order.created")
@@ -43,7 +46,7 @@ public class BackgroundJobService {
 
     @RabbitListener(queues = "email.requested")
     public void handleEmailRequested(Message message) {
-        saveEvent("EMAIL_REQUESTED", message);
+        processEmailRequested(message);
     }
 
     public List<JobEventResponse> getAll() {
@@ -90,7 +93,9 @@ public class BackgroundJobService {
         event.setType(type);
         event.setRoutingKey(routingKey);
         event.setPayload(payload);
+        event.setStatus(JobEventStatus.COMPLETED);
         event.setReceivedAt(Instant.now());
+        event.setProcessedAt(event.getReceivedAt());
 
         try {
             jobEventRepository.save(event);
@@ -99,6 +104,86 @@ public class BackgroundJobService {
             counter("duplicate", routingKey, type).increment();
             log.info("Skip duplicate job event eventId={} routingKey={}", eventId, routingKey);
         }
+    }
+
+    private void processEmailRequested(Message message) {
+        String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+        String routingKey = message.getMessageProperties().getReceivedRoutingKey();
+        EventEnvelope envelope = parseEnvelope(payload);
+        String eventId = resolveEventId(message, envelope);
+        String traceId = resolveTraceId(message, envelope);
+
+        if (StringUtils.hasText(traceId)) {
+            MDC.put(TraceIdFilter.MDC_KEY, traceId);
+        }
+
+        try {
+            String type = envelope == null || !StringUtils.hasText(envelope.eventType())
+                    ? "EMAIL_REQUESTED"
+                    : envelope.eventType();
+            JobEventEntity event = prepareEmailEvent(routingKey, payload, eventId, traceId, type);
+            if (event == null) {
+                counter("duplicate", routingKey, type).increment();
+                log.info("Skip duplicate email event eventId={} routingKey={}", eventId, routingKey);
+                return;
+            }
+
+            try {
+                emailDispatchService.send(payload);
+                markEmailEventCompleted(event);
+                counter("stored", routingKey, type).increment();
+            } catch (RuntimeException ex) {
+                markEmailEventFailed(event, ex);
+                throw ex;
+            }
+        } finally {
+            if (StringUtils.hasText(traceId)) {
+                MDC.remove(TraceIdFilter.MDC_KEY);
+            }
+        }
+    }
+
+    private JobEventEntity prepareEmailEvent(String routingKey, String payload, String eventId, String traceId, String type) {
+        if (StringUtils.hasText(eventId)) {
+            JobEventEntity existing = jobEventRepository.findByEventId(eventId).orElse(null);
+            if (existing != null) {
+                return existing.getStatus() == JobEventStatus.COMPLETED ? null : existing;
+            }
+        }
+
+        JobEventEntity event = new JobEventEntity();
+        if (StringUtils.hasText(eventId)) {
+            event.setEventId(eventId);
+        }
+        event.setTraceId(traceId);
+        event.setType(type);
+        event.setRoutingKey(routingKey);
+        event.setPayload(payload);
+        event.setStatus(JobEventStatus.RECEIVED);
+        event.setReceivedAt(Instant.now());
+
+        try {
+            log.info("Receive job event type={} eventId={} routingKey={}", type, eventId, routingKey);
+            return jobEventRepository.save(event);
+        } catch (DuplicateKeyException ex) {
+            return StringUtils.hasText(eventId)
+                    ? jobEventRepository.findByEventId(eventId).filter(existing -> existing.getStatus() != JobEventStatus.COMPLETED)
+                            .orElse(null)
+                    : null;
+        }
+    }
+
+    private void markEmailEventCompleted(JobEventEntity event) {
+        event.setStatus(JobEventStatus.COMPLETED);
+        event.setProcessedAt(Instant.now());
+        event.setLastError(null);
+        jobEventRepository.save(event);
+    }
+
+    private void markEmailEventFailed(JobEventEntity event, RuntimeException ex) {
+        event.setStatus(JobEventStatus.FAILED);
+        event.setLastError(ex.getMessage());
+        jobEventRepository.save(event);
     }
 
     private EventEnvelope parseEnvelope(String payload) {

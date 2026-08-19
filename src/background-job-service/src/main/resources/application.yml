@@ -13,6 +13,14 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME:guest}
     password: ${SPRING_RABBITMQ_PASSWORD:guest}
+  mail:
+    host: ${SPRING_MAIL_HOST:}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:true}
     listener:
       simple:
         default-requeue-rejected: false
@@ -24,6 +32,17 @@ spring:
           max-interval: ${SPRING_RABBITMQ_LISTENER_RETRY_MAX_INTERVAL:10000}
 
 app:
+  mail:
+    from: ${APP_MAIL_FROM:${SPRING_MAIL_USERNAME:}}
+  github-summary:
+    enabled: ${APP_GITHUB_SUMMARY_ENABLED:true}
+    cron: ${APP_GITHUB_SUMMARY_CRON:0 0 9 * * *}
+    zone: ${APP_GITHUB_SUMMARY_ZONE:UTC}
+    recipient: ${APP_GITHUB_SUMMARY_RECIPIENT:dotung318@gmail.com}
+    query: ${APP_GITHUB_SUMMARY_QUERY:ai developer code assistant}
+    limit: ${APP_GITHUB_SUMMARY_LIMIT:5}
+    api-base-url: ${APP_GITHUB_SUMMARY_API_BASE_URL:https://api.github.com}
+    token: ${APP_GITHUB_SUMMARY_TOKEN:${GITHUB_TOKEN:}}
   security:
     enabled: ${APP_SECURITY_ENABLED:false}
     issuer-uri: ${APP_SECURITY_ISSUER_URI:http://localhost:8080/realms/microservices}

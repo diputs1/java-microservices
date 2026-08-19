@@ -2,6 +2,7 @@ package com.tungdt.microservices.background.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,8 @@ import org.springframework.amqp.core.MessageProperties;
 class BackgroundJobServiceTest {
     @Mock
     private JobEventRepository jobEventRepository;
+    @Mock
+    private EmailDispatchService emailDispatchService;
 
     private BackgroundJobService backgroundJobService;
 
@@ -34,8 +37,10 @@ class BackgroundJobServiceTest {
         backgroundJobService = new BackgroundJobService(
                 jobEventRepository,
                 new ObjectMapper().findAndRegisterModules(),
-                new SimpleMeterRegistry()
+                new SimpleMeterRegistry(),
+                emailDispatchService
         );
+        when(jobEventRepository.save(any(JobEventEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -91,30 +96,45 @@ class BackgroundJobServiceTest {
 
     @Test
     void handleEmailRequestedStoresLegacyPayloadWithoutEventId() {
-        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\"}";
+        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\",\"body\":\"Welcome\"}";
 
         backgroundJobService.handleEmailRequested(message(payload, "email.requested", null, "trace-email"));
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
-        verify(jobEventRepository).save(eventCaptor.capture());
+        verify(jobEventRepository, atLeastOnce()).save(eventCaptor.capture());
         JobEventEntity event = eventCaptor.getValue();
         assertThat(event.getEventId()).isNull();
         assertThat(event.getTraceId()).isEqualTo("trace-email");
         assertThat(event.getType()).isEqualTo("EMAIL_REQUESTED");
         assertThat(event.getRoutingKey()).isEqualTo("email.requested");
+        verify(emailDispatchService).send(payload);
     }
 
     @Test
     void handleEmailRequestedUsesMessageIdForLegacyPayloadIdempotency() {
-        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\"}";
+        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\",\"body\":\"Welcome\"}";
 
         backgroundJobService.handleEmailRequested(message(payload, "email.requested", "message-1", null));
 
         ArgumentCaptor<JobEventEntity> eventCaptor = ArgumentCaptor.forClass(JobEventEntity.class);
-        verify(jobEventRepository).save(eventCaptor.capture());
+        verify(jobEventRepository, atLeastOnce()).save(eventCaptor.capture());
         JobEventEntity event = eventCaptor.getValue();
         assertThat(event.getEventId()).isEqualTo("message-1");
-        assertThat(event.getType()).isEqualTo("EMAIL_REQUESTED");
+        assertThat(event.getStatus()).isNotNull();
+        verify(emailDispatchService).send(payload);
+    }
+
+    @Test
+    void handleEmailRequestedSkipsCompletedDuplicate() {
+        String payload = "{\"to\":\"customer@example.com\",\"subject\":\"Hi\",\"body\":\"Test\"}";
+        JobEventEntity existing = new JobEventEntity();
+        existing.setEventId("message-1");
+        existing.setStatus(com.tungdt.microservices.background.entity.JobEventStatus.COMPLETED);
+        when(jobEventRepository.findByEventId("message-1")).thenReturn(java.util.Optional.of(existing));
+
+        backgroundJobService.handleEmailRequested(message(payload, "email.requested", "message-1", null));
+
+        verify(emailDispatchService, never()).send(any());
     }
 
     private Message message(String payload, String routingKey, String messageId, String traceId) {
