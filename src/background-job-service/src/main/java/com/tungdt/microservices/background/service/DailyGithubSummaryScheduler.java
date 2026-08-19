@@ -17,6 +17,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class DailyGithubSummaryScheduler {
@@ -38,6 +39,10 @@ public class DailyGithubSummaryScheduler {
     @Scheduled(cron = "${app.github-summary.cron:0 0 9 * * *}", zone = "${app.github-summary.zone:UTC}")
     public void queueDailySummary() {
         if (!properties.isEnabled()) {
+            return;
+        }
+        if (!StringUtils.hasText(properties.getRecipient())) {
+            log.warn("Skip daily GitHub summary because no recipient is configured");
             return;
         }
 

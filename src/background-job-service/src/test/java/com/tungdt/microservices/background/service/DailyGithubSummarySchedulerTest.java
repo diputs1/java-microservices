@@ -79,4 +79,17 @@ class DailyGithubSummarySchedulerTest {
                 any(MessagePostProcessor.class)
         );
     }
+
+    @Test
+    void queueDailySummarySkipsWhenRecipientMissing() {
+        properties.setRecipient("");
+
+        scheduler.queueDailySummary();
+
+        verify(rabbitTemplate, never()).convertAndSend(
+                any(String.class),
+                any(Object.class),
+                any(MessagePostProcessor.class)
+        );
+    }
 }

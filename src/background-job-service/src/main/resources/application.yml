@@ -38,7 +38,7 @@ app:
     enabled: ${APP_GITHUB_SUMMARY_ENABLED:true}
     cron: ${APP_GITHUB_SUMMARY_CRON:0 0 9 * * *}
     zone: ${APP_GITHUB_SUMMARY_ZONE:UTC}
-    recipient: ${APP_GITHUB_SUMMARY_RECIPIENT:dotung318@gmail.com}
+    recipient: ${APP_GITHUB_SUMMARY_RECIPIENT:}
     query: ${APP_GITHUB_SUMMARY_QUERY:ai developer code assistant}
     limit: ${APP_GITHUB_SUMMARY_LIMIT:5}
     api-base-url: ${APP_GITHUB_SUMMARY_API_BASE_URL:https://api.github.com}

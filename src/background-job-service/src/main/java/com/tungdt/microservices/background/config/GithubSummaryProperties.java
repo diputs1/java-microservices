@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.github-summary")
 public class GithubSummaryProperties {
     private boolean enabled = true;
-    private String recipient = "dotung318@gmail.com";
+    private String recipient;
     private String query = "ai developer code assistant";
     private int limit = 5;
     private String apiBaseUrl = "https://api.github.com";

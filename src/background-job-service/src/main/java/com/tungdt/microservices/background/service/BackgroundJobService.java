@@ -166,10 +166,13 @@ public class BackgroundJobService {
             log.info("Receive job event type={} eventId={} routingKey={}", type, eventId, routingKey);
             return jobEventRepository.save(event);
         } catch (DuplicateKeyException ex) {
-            return StringUtils.hasText(eventId)
-                    ? jobEventRepository.findByEventId(eventId).filter(existing -> existing.getStatus() != JobEventStatus.COMPLETED)
-                            .orElse(null)
-                    : null;
+            if (!StringUtils.hasText(eventId)) {
+                log.warn("Cannot recover duplicate email event without eventId routingKey={}", routingKey);
+                throw ex;
+            }
+            return jobEventRepository.findByEventId(eventId)
+                    .filter(existing -> existing.getStatus() != JobEventStatus.COMPLETED)
+                    .orElse(null);
         }
     }
 
